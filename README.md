@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="SCRIBE_Logo.png" alt="SCRIBE Logo" width="200"/>
+</div>
+
 # SCRIBE - Source Content Retrieval and Intelligence Bot Engine
 
 Automated intelligence gathering system that collects, analyzes, and synthesizes the latest AI news from Reddit and YouTube, using Ollama (Mistral, Phi4, etc.) for analysis and Markdown report generation.
