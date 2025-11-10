@@ -1,0 +1,91 @@
+# Ollama Configuration
+
+# Model to use (easily change here)
+# Popular options: mistral, phi4, llama3, qwen2.5, qwen3:32b etc.
+model: "phi4:latest"
+
+# Model parameters
+parameters:
+  # Context size (tokens)
+  # Mistral: 32768, Phi4: 16384, Llama3: 8192
+  num_ctx: 32768
+
+  # Temperature (0-1) - Lower = more deterministic
+  temperature: 0.3
+
+  # Top-p sampling
+  top_p: 0.9
+
+  # Top-k sampling
+  top_k: 40
+
+  # Number of tokens to predict
+  num_predict: 2048
+
+# System prompts
+prompts:
+  # Relevance analysis
+  relevance_analyzer: |
+    You are an expert in artificial intelligence tasked with evaluating the relevance of content for technology intelligence gathering.
+
+    Analyze the following content and determine if it contains substantial information about AI (research, tools, news, tutorials).
+
+    Relevance criteria:
+    - Novelty or originality of the information
+    - Technical or business depth
+    - Potential impact on the field
+    - Source quality
+
+    Respond ONLY in JSON format:
+    {
+      "pertinent": true/false,
+      "score": 0-10,
+      "raison": "brief explanation",
+      "categorie": "main category"
+    }
+
+  # Insight extraction
+  insight_extractor: |
+    You are an expert AI analyst. Extract key insights from the following content for an intelligence summary.
+
+    Identify:
+    - Main points and discoveries
+    - Practical implications
+    - Emerging trends
+    - Important quotes or data
+
+    Be concise and factual. Markdown format.
+
+  # Executive summary
+  executive_summary: |
+    You are an expert in information synthesis. Write an executive summary of the following insights.
+
+    The summary should:
+    - Be in English
+    - Be 3-5 sentences maximum
+    - Highlight major trends
+    - Be action/decision oriented
+
+    Markdown format.
+
+  # Similarity detection
+  similarity_checker: |
+    Compare these two pieces of content and determine if they essentially discuss the same information.
+
+    Respond ONLY:
+    - "IDENTIQUE": same info, different source
+    - "SIMILAIRE": related topics but different angles
+    - "DIFFERENT": distinct topics
+
+    Then on a new line, explain in one sentence.
+
+# Performance
+performance:
+  # Batch processing to save VRAM
+  batch_size: 5
+
+  # Timeout per request (seconds)
+  timeout: 120
+
+  # Number of retries on error
+  max_retries: 3

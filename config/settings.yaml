@@ -1,0 +1,97 @@
+# SCRIBE - Automated Intelligence Gathering Configuration
+
+# Reddit Collection
+reddit:
+  subreddits:
+    - SillyTavernAI
+    - StableDiffusion
+    - ClaudeAI
+    - claudexplorers
+    - MachineLearning
+    - artificial
+    - LocalLLaMA
+    - deeplearning
+    - MLQuestions
+    - AI_Agents
+    - learnmachinelearning
+
+  # Number of posts to fetch per subreddit 50
+  posts_limit: 5
+
+  # Timeframe for posts (day, week, month, year, all)
+  timeframe: day
+
+  # Include top comments
+  include_comments: true
+  comments_limit: 10
+
+# YouTube Collection
+youtube:
+  # Search by keywords
+  keywords:
+    - "artificial intelligence news"
+    - "LLM tutorial"
+    - "machine learning breakthrough"
+    - "AI research"
+    - "Claude AI"
+    - "Claude Code"
+    - "Anthropic"
+
+
+  # Specific channels to monitor (Channel IDs or usernames)
+  channels:
+    - "@TwoMinutePapers"
+    - "@YannicKilcher"
+    - "@AIExplained-"
+
+  # Number of videos per search/channel (20)
+  videos_limit: 3
+
+  # Number of days to look back
+  days_back: 1
+
+  # Accepted languages for transcripts
+  languages:
+    - fr
+    - en
+
+# Filtering and Analysis
+analysis:
+  # Relevance criteria (used in LLM prompts)
+  relevance_threshold: 7  # Score out of 10
+
+  # Categories to identify
+  categories:
+    - "Large Language Models"
+    - "Computer Vision"
+    - "Reinforcement Learning"
+    - "AI Ethics & Safety"
+    - "AI Tools & Applications"
+    - "Research Papers"
+    - "Industry News"
+    - "Tutorials & Education"
+
+  # Deduplication
+  similarity_threshold: 0.85  # Cosine similarity (0-1)
+
+# Report Generation
+reports:
+  # Date format in file names
+  date_format: "%Y-%m-%d"
+
+  # Output directory
+  output_dir: "data/reports"
+
+  # Minimum number of insights to generate a report
+  min_insights: 3
+
+  # Include collection metrics
+  include_metrics: true
+
+# Scheduling
+scheduler:
+  # Daily execution time (24h format)
+  run_time: "08:30"
+
+  # Timezone
+  timezone: "Europe/Paris"

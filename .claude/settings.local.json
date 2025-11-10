@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(python -m pip install:*)",
+      "Bash(python test_connections.py:*)",
+      "Bash(python -c:*)",
+      "Bash(python main.py:*)",
+      "Bash(timeout:*)",
+      "Bash(git init:*)",
+      "Bash(.gitignore)",
+      "Bash(touch:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
