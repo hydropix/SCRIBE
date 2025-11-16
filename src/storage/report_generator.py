@@ -181,70 +181,21 @@ class ReportGenerator:
     ) -> str:
         """Builds the Markdown content of the report"""
 
+        # Header impactant avec date et heure
+        current_datetime = datetime.now()
+        formatted_date = current_datetime.strftime('%d %B %Y')
+        formatted_time = current_datetime.strftime('%H:%M')
+
         lines = [
-            f"# Veille IA - {report_date}",
+            "# 🔍 SCRIBE - INTELLIGENCE REPORT",
             "",
-            f"*Rapport généré automatiquement le {datetime.now().strftime('%Y-%m-%d à %H:%M')}*",
+            "---",
+            "",
+            f"## 📅 {formatted_date} | ⏰ {formatted_time}",
             "",
             "---",
             "",
         ]
-
-        # Executive summary
-        lines.extend([
-            "## 📊 Résumé Exécutif",
-            "",
-            executive_summary,
-            "",
-            "---",
-            "",
-        ])
-
-        # Statistics if available
-        if statistics and self.report_config.get('include_metrics', True):
-            lines.extend([
-                "## 📈 Métriques",
-                "",
-                f"- **Total de contenus analysés**: {statistics.get('total_analyzed', 0)}",
-                f"- **Contenus pertinents**: {statistics.get('relevant_count', 0)} ({statistics.get('relevant_percentage', 0):.1f}%)",
-                f"- **Score de pertinence moyen**: {statistics.get('average_score', 0)}/10",
-                f"- **Catégories couvertes**: {len(by_category)}",
-                "",
-            ])
-
-            # Distribution by category
-            if statistics.get('categories_distribution'):
-                lines.append("**Distribution par catégorie**:")
-                lines.append("")
-                for cat, count in sorted(
-                    statistics['categories_distribution'].items(),
-                    key=lambda x: x[1],
-                    reverse=True
-                ):
-                    lines.append(f"- {cat}: {count}")
-                lines.append("")
-
-            # Sources
-            if 'by_source' in statistics:
-                lines.append("**Sources**:")
-                lines.append("")
-                for source, count in statistics['by_source'].items():
-                    lines.append(f"- {source.title()}: {count}")
-                lines.append("")
-
-            lines.extend(["", "---", ""])
-
-        # Table of contents
-        lines.extend([
-            "## 📑 Table des Matières",
-            "",
-        ])
-
-        for i, category in enumerate(by_category.keys(), 1):
-            anchor = category.lower().replace(' ', '-').replace('&', 'and')
-            lines.append(f"{i}. [{category}](#{anchor}) ({len(by_category[category])} insights)")
-
-        lines.extend(["", "---", ""])
 
         # Contents by category
         for category, contents in by_category.items():

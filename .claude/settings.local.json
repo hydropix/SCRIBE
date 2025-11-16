@@ -19,7 +19,8 @@
       "Bash(git push:*)",
       "Bash(nul)",
       "Bash(mkdir:*)",
-      "Bash(python -m py_compile:*)"
+      "Bash(python -m py_compile:*)",
+      "Bash(python test_discord_split.py:*)"
     ],
     "deny": [],
     "ask": []
