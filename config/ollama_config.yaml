@@ -2,7 +2,7 @@
 
 # Model to use (easily change here)
 # Popular options: mistral, phi4, llama3, qwen2.5, qwen3:32b etc.
-model: "phi4:latest"
+model: "qwen3:32b"
 
 # Model parameters
 parameters:
@@ -55,13 +55,14 @@ prompts:
     - Important quotes or data
 
     Be concise and factual. Markdown format.
+    Write your response in {language}.
 
   # Executive summary
   executive_summary: |
     You are an expert in information synthesis. Write an executive summary of the following insights.
 
     The summary should:
-    - Be in English
+    - Be written in {language}
     - Be 3-5 sentences maximum
     - Highlight major trends
     - Be action/decision oriented

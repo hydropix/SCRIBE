@@ -22,14 +22,19 @@ from src.processors.content_analyzer import ContentAnalyzer
 from src.processors.deduplicator import ContentDeduplicator
 from src.storage.cache_manager import CacheManager
 from src.storage.report_generator import ReportGenerator
+from src.notifiers.discord_notifier import DiscordNotifier
 from src.scheduler import VeilleScheduler
 
 
 class SCRIBE:
     """Main orchestrator for the SCRIBE intelligence system"""
 
-    def __init__(self):
-        """Initialize the intelligence system"""
+    def __init__(self, language: str = None):
+        """Initialize the intelligence system
+
+        Args:
+            language: Language code for report generation (en, fr, es, etc.)
+        """
 
         # Configure logging
         self.logger = setup_logging()
@@ -47,18 +52,41 @@ class SCRIBE:
         # Create necessary directories
         ensure_directories()
 
+        # Load config for options
+        self.config = load_config("config/settings.yaml")
+
+        # Get language from parameter or config
+        if language is None:
+            language = self.config.get('reports', {}).get('language', 'en')
+
+        self.language = language
+
+        # Map language codes to full names for components
+        language_map = {
+            'en': 'English',
+            'fr': 'French',
+            'es': 'Spanish',
+            'de': 'German',
+            'it': 'Italian',
+            'pt': 'Portuguese',
+            'nl': 'Dutch',
+            'ru': 'Russian',
+            'zh': 'Chinese',
+            'ja': 'Japanese',
+            'ar': 'Arabic'
+        }
+        language_full = language_map.get(language, 'English')
+
         # Initialize components
-        self.logger.info("Initializing components...")
+        self.logger.info(f"Initializing components (language: {language_full})...")
 
         self.reddit_collector = RedditCollector()
         self.youtube_collector = YouTubeCollector()
-        self.analyzer = ContentAnalyzer()
+        self.analyzer = ContentAnalyzer(language=language_full)
         self.deduplicator = ContentDeduplicator()
         self.cache = CacheManager()
-        self.report_generator = ReportGenerator()
-
-        # Load config for options
-        self.config = load_config("config/settings.yaml")
+        self.report_generator = ReportGenerator(language=language_full)
+        self.discord_notifier = DiscordNotifier()
 
         self.logger.info("All components initialized successfully")
 
@@ -69,8 +97,12 @@ class SCRIBE:
         self.logger.info(f"Starting intelligence cycle at {datetime.now()}")
         self.logger.info("=" * 60 + "\n")
 
+        # 0. Cache cleanup (remove entries older than 3 months)
+        self.logger.info("STEP 0: Cleaning up old cache entries...")
+        self.cache.cleanup_old_entries(days_to_keep=90)
+
         # 1. Data collection
-        self.logger.info("STEP 1: Collecting data from sources...")
+        self.logger.info("\nSTEP 1: Collecting data from sources...")
 
         reddit_posts = self._collect_reddit()
         youtube_videos = self._collect_youtube()
@@ -145,10 +177,12 @@ class SCRIBE:
             'youtube': len(youtube_videos)
         }
 
-        report_path = self.report_generator.generate_report(
+        report_result = self.report_generator.generate_report(
             unique,
             statistics=statistics
         )
+
+        report_path = report_result['path'] if report_result else None
 
         # Save to cache
         if report_path:
@@ -160,7 +194,21 @@ class SCRIBE:
                 relevant_count=len(unique)
             )
 
-        # 7. Final summary
+        # 7. Discord notification (if enabled)
+        discord_config = self.config.get('discord', {})
+        if discord_config.get('enabled', False) and report_result:
+            self.logger.info("\nSTEP 7: Sending Discord notification...")
+            try:
+                self.discord_notifier.send_report_summary(
+                    report_path=report_result['path'],
+                    executive_summary=report_result['executive_summary'],
+                    metrics=report_result['statistics'],
+                    mention_role=discord_config.get('mention_role', '')
+                )
+            except Exception as e:
+                self.logger.error(f"Discord notification failed (non-blocking): {e}")
+
+        # 8. Final summary
         self.logger.info("\n" + "=" * 60)
         self.logger.info("INTELLIGENCE CYCLE COMPLETED")
         self.logger.info("=" * 60)
@@ -275,10 +323,17 @@ def main():
         help='In schedule mode, execute immediately before scheduling'
     )
 
+    parser.add_argument(
+        '--language', '--lang',
+        type=str,
+        default=None,
+        help='Report language (en, fr, es, de, etc.). Default: from config (en)'
+    )
+
     args = parser.parse_args()
 
-    # Initialize the system
-    scribe = SCRIBE()
+    # Initialize the system with language parameter
+    scribe = SCRIBE(language=args.language)
 
     if args.mode == 'stats':
         # Display statistics

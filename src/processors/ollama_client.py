@@ -17,12 +17,13 @@ from src.utils import load_config
 class OllamaClient:
     """Client to interact with Ollama using YAML configuration"""
 
-    def __init__(self, config_path: str = "config/ollama_config.yaml"):
+    def __init__(self, config_path: str = "config/ollama_config.yaml", language: str = "English"):
         """
         Initializes the Ollama client
 
         Args:
             config_path: Path to the configuration file
+            language: Language for report generation (default: English)
         """
         self.logger = logging.getLogger("SCRIBE.OllamaClient")
         self.config = load_config(config_path)
@@ -31,6 +32,7 @@ class OllamaClient:
         self.parameters = self.config.get('parameters', {})
         self.prompts = self.config.get('prompts', {})
         self.performance = self.config.get('performance', {})
+        self.language = language
 
         # Configure Ollama host from .env
         self.ollama_host = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
@@ -38,7 +40,7 @@ class OllamaClient:
         # Create Ollama client with configured host
         self.client = ollama.Client(host=self.ollama_host)
 
-        self.logger.info(f"Ollama client initialized with model: {self.model} on {self.ollama_host}")
+        self.logger.info(f"Ollama client initialized with model: {self.model} on {self.ollama_host} (language: {language})")
         self._verify_model()
 
     def _verify_model(self):
@@ -173,7 +175,7 @@ class OllamaClient:
         Returns:
             The insights in Markdown format
         """
-        system_prompt = self.prompts.get('insight_extractor', '')
+        system_prompt = self.prompts.get('insight_extractor', '').format(language=self.language)
 
         user_prompt = f"Titre: {title}\n\nContenu:\n{content[:4000]}"
 
@@ -194,7 +196,7 @@ class OllamaClient:
         Returns:
             The executive summary in Markdown format
         """
-        system_prompt = self.prompts.get('executive_summary', '')
+        system_prompt = self.prompts.get('executive_summary', '').format(language=self.language)
 
         user_prompt = "Insights à résumer:\n\n" + "\n\n---\n\n".join(insights)
 

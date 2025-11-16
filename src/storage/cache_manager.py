@@ -4,7 +4,7 @@ import sqlite3
 import logging
 import json
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import sys
 
@@ -309,12 +309,12 @@ class CacheManager:
             'reports_generated': reports_count
         }
 
-    def cleanup_old_entries(self, days_to_keep: int = 30):
+    def cleanup_old_entries(self, days_to_keep: int = 90):
         """
-        Cleans up old cache entries
+        Cleans up old cache entries older than specified days
 
         Args:
-            days_to_keep: Number of days to keep
+            days_to_keep: Number of days to keep (default: 90 days / 3 months)
         """
         cutoff_date = (datetime.now() - timedelta(days=days_to_keep)).isoformat()
 

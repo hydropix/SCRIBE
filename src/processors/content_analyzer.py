@@ -18,7 +18,8 @@ class ContentAnalyzer:
     def __init__(
         self,
         settings_path: str = "config/settings.yaml",
-        ollama_config_path: str = "config/ollama_config.yaml"
+        ollama_config_path: str = "config/ollama_config.yaml",
+        language: str = None
     ):
         """
         Initializes the content analyzer
@@ -26,18 +27,39 @@ class ContentAnalyzer:
         Args:
             settings_path: Path to settings.yaml
             ollama_config_path: Path to ollama_config.yaml
+            language: Language for content analysis (overrides config if provided)
         """
         self.logger = logging.getLogger("SCRIBE.ContentAnalyzer")
         self.config = load_config(settings_path)
         self.analysis_config = self.config.get('analysis', {})
 
-        # Initialize Ollama client
-        self.ollama = OllamaClient(ollama_config_path)
+        # Get language from parameter or config (default: English)
+        if language is None:
+            report_config = self.config.get('reports', {})
+            language_code = report_config.get('language', 'en')
+            # Map language codes to full names
+            language_map = {
+                'en': 'English',
+                'fr': 'French',
+                'es': 'Spanish',
+                'de': 'German',
+                'it': 'Italian',
+                'pt': 'Portuguese',
+                'nl': 'Dutch',
+                'ru': 'Russian',
+                'zh': 'Chinese',
+                'ja': 'Japanese',
+                'ar': 'Arabic'
+            }
+            language = language_map.get(language_code, 'English')
+
+        # Initialize Ollama client with language support
+        self.ollama = OllamaClient(ollama_config_path, language=language)
 
         self.relevance_threshold = self.analysis_config.get('relevance_threshold', 7)
         self.categories = self.analysis_config.get('categories', [])
 
-        self.logger.info("Content analyzer initialized")
+        self.logger.info(f"Content analyzer initialized (language: {language})")
 
     def analyze_content(
         self,

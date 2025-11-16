@@ -19,7 +19,8 @@ class ReportGenerator:
     def __init__(
         self,
         settings_path: str = "config/settings.yaml",
-        ollama_config_path: str = "config/ollama_config.yaml"
+        ollama_config_path: str = "config/ollama_config.yaml",
+        language: str = None
     ):
         """
         Initializes the report generator
@@ -27,25 +28,46 @@ class ReportGenerator:
         Args:
             settings_path: Path to settings.yaml
             ollama_config_path: Path to ollama_config.yaml
+            language: Language for report generation (overrides config if provided)
         """
         self.logger = logging.getLogger("SCRIBE.ReportGenerator")
         self.config = load_config(settings_path)
         self.report_config = self.config.get('reports', {})
 
-        # Ollama client for summaries
-        self.ollama = OllamaClient(ollama_config_path)
+        # Get language from parameter or config (default: English)
+        if language is None:
+            language_code = self.report_config.get('language', 'en')
+            # Map language codes to full names
+            language_map = {
+                'en': 'English',
+                'fr': 'French',
+                'es': 'Spanish',
+                'de': 'German',
+                'it': 'Italian',
+                'pt': 'Portuguese',
+                'nl': 'Dutch',
+                'ru': 'Russian',
+                'zh': 'Chinese',
+                'ja': 'Japanese',
+                'ar': 'Arabic'
+            }
+            language = language_map.get(language_code, 'English')
+
+        # Ollama client for summaries with language support
+        self.ollama = OllamaClient(ollama_config_path, language=language)
+        self.language = language
 
         self.output_dir = Path(self.report_config.get('output_dir', 'data/reports'))
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        self.logger.info("Report generator initialized")
+        self.logger.info(f"Report generator initialized (language: {language})")
 
     def generate_report(
         self,
         relevant_contents: List[Dict[str, Any]],
         report_date: str = None,
         statistics: Dict[str, Any] = None
-    ) -> str:
+    ) -> Dict[str, Any]:
         """
         Generates a complete monitoring report
 
@@ -55,7 +77,10 @@ class ReportGenerator:
             statistics: Collection statistics (optional)
 
         Returns:
-            Path to the generated report file
+            Dictionary containing:
+                - path: Path to the generated report file
+                - executive_summary: The generated executive summary
+                - statistics: The statistics used in the report
         """
         if not relevant_contents:
             self.logger.warning("No relevant contents to generate report")
@@ -91,7 +116,11 @@ class ReportGenerator:
 
         self.logger.info(f"Report generated: {report_path}")
 
-        return str(report_path)
+        return {
+            'path': str(report_path),
+            'executive_summary': executive_summary,
+            'statistics': statistics
+        }
 
     def _group_by_category(
         self,
@@ -356,5 +385,6 @@ if __name__ == "__main__":
         }
     }
 
-    report_path = generator.generate_report(test_contents, statistics=stats)
-    print(f"\nGenerated report: {report_path}")
+    result = generator.generate_report(test_contents, statistics=stats)
+    print(f"\nGenerated report: {result['path']}")
+    print(f"Executive summary: {result['executive_summary'][:100]}...")

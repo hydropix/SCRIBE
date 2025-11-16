@@ -88,10 +88,28 @@ reports:
   # Include collection metrics
   include_metrics: true
 
+  # Report language (en, fr, es, de, etc.)
+  # This controls the language for insights extraction and executive summary
+  language: "en"
+
 # Scheduling
 scheduler:
   # Daily execution time (24h format)
-  run_time: "08:30"
+  run_time: "07:00"
 
   # Timezone
   timezone: "Europe/Paris"
+
+# Discord Notifications
+discord:
+  # Enable/disable Discord notifications
+  enabled: true
+
+  # Send executive summary in notification
+  send_executive_summary: true
+
+  # Send metrics in notification
+  send_metrics: true
+
+  # Optional: Role to mention (e.g., "@everyone" or role ID)
+  mention_role: ""
