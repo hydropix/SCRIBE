@@ -46,8 +46,24 @@ class OllamaClient:
     def _verify_model(self):
         """Verifies that the model is available in Ollama"""
         try:
-            models = self.client.list()
-            model_names = [model.get('name') or model.get('model', '') for model in models.get('models', [])]
+            models_response = self.client.list()
+
+            # Handle different response formats (dict or Pydantic object)
+            model_list = []
+            if isinstance(models_response, dict) and "models" in models_response:
+                model_list = models_response["models"]
+            elif hasattr(models_response, 'models'):
+                model_list = models_response.models
+
+            # Extract model names
+            model_names = []
+            for model in model_list:
+                if isinstance(model, dict):
+                    model_names.append(model.get('name') or model.get('model', ''))
+                elif hasattr(model, 'model'):
+                    model_names.append(model.model)
+                else:
+                    model_names.append(str(model))
 
             if not any(self.model in name for name in model_names):
                 self.logger.warning(
