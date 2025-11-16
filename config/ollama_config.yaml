@@ -2,7 +2,7 @@
 
 # Model to use (easily change here)
 # Popular options: mistral, phi4, llama3, qwen2.5, qwen3:32b etc.
-model: "qwen3:32b"
+model: "qwen3:14b"
 
 # Model parameters
 parameters:
@@ -46,6 +46,8 @@ prompts:
 
   # Insight extraction
   insight_extractor: |
+    IMPORTANT: You MUST write your ENTIRE response in {language}. Do NOT use any other language.
+
     You are an expert AI analyst. Extract key insights from the following content for an intelligence summary.
 
     Identify:
@@ -55,19 +57,23 @@ prompts:
     - Important quotes or data
 
     Be concise and factual. Markdown format.
-    Write your response in {language}.
+
+    REMINDER: Your response MUST be entirely in {language}, regardless of the source content language.
 
   # Executive summary
   executive_summary: |
+    CRITICAL: Write your ENTIRE response in {language}. This is mandatory.
+
     You are an expert in information synthesis. Write an executive summary of the following insights.
 
     The summary should:
-    - Be written in {language}
     - Be 3-5 sentences maximum
     - Highlight major trends
     - Be action/decision oriented
 
     Markdown format.
+
+    FINAL REMINDER: The summary MUST be written entirely in {language}, regardless of the source content language.
 
   # Similarity detection
   similarity_checker: |

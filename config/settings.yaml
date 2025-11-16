@@ -3,17 +3,24 @@
 # Reddit Collection
 reddit:
   subreddits:
-    - SillyTavernAI
+    - artificial
+    - ArtificialInteligence
+    - MachineLearning
+    - OpenAI
+    - singularity
+    - AGI
     - StableDiffusion
+    - AIethics
+    - Futurology
+    - DarkFuturology
+    - DataScience
+    - computervision
+    - robotics
+    - SillyTavernAI
     - ClaudeAI
     - claudexplorers
-    - MachineLearning
-    - artificial
     - LocalLLaMA
-    - deeplearning
-    - MLQuestions
     - AI_Agents
-    - learnmachinelearning
 
   # Number of posts to fetch per subreddit 50
   posts_limit: 5
@@ -23,29 +30,23 @@ reddit:
 
   # Include top comments
   include_comments: true
-  comments_limit: 10
+  comments_limit: 5
 
 # YouTube Collection
 youtube:
   # Search by keywords
   keywords:
-    - "artificial intelligence news"
-    - "LLM tutorial"
-    - "machine learning breakthrough"
     - "AI research"
-    - "Claude AI"
-    - "Claude Code"
-    - "Anthropic"
-
 
   # Specific channels to monitor (Channel IDs or usernames)
   channels:
-    - "@TwoMinutePapers"
     - "@YannicKilcher"
     - "@AIExplained-"
+    - "@VisionIA-FR"
+    - "@matthew_berman"
 
   # Number of videos per search/channel (20)
-  videos_limit: 3
+  videos_limit: 1
 
   # Number of days to look back
   days_back: 1
@@ -63,13 +64,27 @@ analysis:
   # Categories to identify
   categories:
     - "Large Language Models"
-    - "Computer Vision"
+    - "Vibe Coding"
     - "Reinforcement Learning"
     - "AI Ethics & Safety"
     - "AI Tools & Applications"
     - "Research Papers"
-    - "Industry News"
-    - "Tutorials & Education"
+    - "Futurology"
+    - "AI Agents & Autonomous Systems"
+    - "Multimodal AI"
+    - "AI Regulation & Policy"
+    - "Open Source Models"
+    - "AI Hardware & Infrastructure"
+    - "Generative AI (Text/Image/Video/Audio)"
+    - "AI in Healthcare"
+    - "AI Security & Adversarial Attacks"
+    - "Robotics & Embodied AI"
+    - "AI Benchmarks & Evaluations"
+    - "Enterprise AI & Business Applications"
+    - "AI Startups & Funding"
+    - "Model Fine-tuning & Training"
+    - "Prompt Engineering"
+    - "AI Reasoning & Chain-of-Thought"
 
   # Deduplication
   similarity_threshold: 0.85  # Cosine similarity (0-1)
@@ -90,7 +105,7 @@ reports:
 
   # Report language (en, fr, es, de, etc.)
   # This controls the language for insights extraction and executive summary
-  language: "en"
+  language: "fr"
 
 # Scheduling
 scheduler:
