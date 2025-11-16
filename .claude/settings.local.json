@@ -15,7 +15,11 @@
       "Bash(gh auth:*)",
       "Bash(gh repo create:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(nul)",
+      "Bash(mkdir:*)",
+      "Bash(python -m py_compile:*)"
     ],
     "deny": [],
     "ask": []
