@@ -36,7 +36,7 @@ echo.
 
 REM Check if dependencies are installed
 echo Checking dependencies...
-pip show praw >nul 2>&1
+pip show python-dotenv >nul 2>&1
 if errorlevel 1 (
     echo [!] Installing required dependencies...
     pip install -r requirements.txt
@@ -46,6 +46,18 @@ if errorlevel 1 (
     )
     echo [+] Dependencies installed.
     echo.
+) else (
+    pip show praw >nul 2>&1
+    if errorlevel 1 (
+        echo [!] Installing missing dependencies...
+        pip install -r requirements.txt
+        if errorlevel 1 (
+            echo [-] Error installing dependencies
+            goto :end
+        )
+        echo [+] Dependencies installed.
+        echo.
+    )
 )
 
 REM Run the test script
