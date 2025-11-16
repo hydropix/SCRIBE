@@ -48,17 +48,25 @@ prompts:
   insight_extractor: |
     IMPORTANT: You MUST write your ENTIRE response in {language}. Do NOT use any other language.
 
-    You are an expert AI analyst. Extract key insights from the following content for an intelligence summary.
+    You are an expert AI analyst. Analyze the following content and provide a structured JSON response.
 
-    Identify:
-    - Main points and discoveries
-    - Practical implications
-    - Emerging trends
-    - Important quotes or data
+    Your response MUST be a valid JSON object with these fields:
+    1. "translated_title": The title translated into {language} (keep it compelling and informative)
+    2. "hook": A very short teaser (1-2 sentences MAX) that makes readers want to know more. Be intriguing and concise.
+    3. "insights": Key insights in Markdown format, including:
+       - Main points and discoveries
+       - Practical implications
+       - Emerging trends
+       - Important quotes or data
 
-    Be concise and factual. Markdown format.
+    Respond ONLY with valid JSON, no other text:
+    {{
+      "translated_title": "translated title here",
+      "hook": "short intriguing teaser here",
+      "insights": "markdown formatted insights here"
+    }}
 
-    REMINDER: Your response MUST be entirely in {language}, regardless of the source content language.
+    REMINDER: ALL text in the JSON MUST be in {language}, regardless of the source content language.
 
   # Executive summary
   executive_summary: |

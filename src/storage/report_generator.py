@@ -154,7 +154,7 @@ class ReportGenerator:
         formatted_time = current_datetime.strftime('%H:%M')
 
         lines = [
-            "# 🔍 SCRIBE - INTELLIGENCE REPORT",
+            "# 📊 AI TRENDS & INNOVATIONS",
             "",
             "---",
             "",
@@ -196,51 +196,60 @@ class ReportGenerator:
     ) -> List[str]:
         """Formats a content item for Markdown"""
 
+        # Use translated title if available, otherwise original title
+        display_title = content.get('translated_title', content['title'])
+
         lines = [
-            f"### {index}. {content['title']}",
+            f"### {index}. {display_title}",
             "",
         ]
 
-        # Metadata
-        metadata = content.get('metadata', {})
-        source = metadata.get('source', 'unknown').title()
+        # Hook (short teaser to engage reader)
+        if content.get('hook'):
+            lines.extend([
+                f"*{content['hook']}*",
+                "",
+            ])
 
-        lines.append(f"**Source**: {source}")
+        # Insights (main content)
+        if content.get('insights'):
+            lines.extend([
+                content['insights'],
+                "",
+            ])
+
+        # Metadata at the end
+        metadata = content.get('metadata', {})
+        metadata_parts = []
 
         # Link
         url = metadata.get('url') or metadata.get('permalink')
         if url:
-            lines.append(f"**Link**: [{url}]({url})")
+            metadata_parts.append(f"[Source]({url})")
 
         # Relevance score
         score = content.get('relevance_score', 0)
-        lines.append(f"**Relevance**: {score}/10")
+        metadata_parts.append(f"Relevance: {score}/10")
 
         # Author/Channel if available
         if metadata.get('author'):
-            lines.append(f"**Auteur**: {metadata['author']}")
+            metadata_parts.append(f"Author: {metadata['author']}")
         elif metadata.get('channel_title'):
-            lines.append(f"**Channel**: {metadata['channel_title']}")
+            metadata_parts.append(f"Channel: {metadata['channel_title']}")
 
         # Date
         if metadata.get('created_utc'):
             date_str = metadata['created_utc']
             if isinstance(date_str, datetime):
-                date_str = date_str.strftime('%Y-%m-%d %H:%M')
-            lines.append(f"**Date**: {date_str}")
+                date_str = date_str.strftime('%Y-%m-%d')
+            metadata_parts.append(f"Date: {date_str}")
         elif metadata.get('published_at'):
-            lines.append(f"**Date**: {metadata['published_at'][:10]}")
+            metadata_parts.append(f"Date: {metadata['published_at'][:10]}")
 
-        lines.append("")
-
-        # Insights
-        if content.get('insights'):
-            lines.extend([
-                "**Insights**:",
-                "",
-                content['insights'],
-                "",
-            ])
+        # Join metadata with separator
+        if metadata_parts:
+            lines.append(f"📎 {' | '.join(metadata_parts)}")
+            lines.append("")
 
         lines.append("")
 
@@ -262,6 +271,8 @@ if __name__ == "__main__":
     test_contents = [
         {
             'title': 'GPT-5 Released',
+            'translated_title': 'Sortie de GPT-5 : Une Révolution dans le Raisonnement IA',
+            'hook': 'OpenAI repousse les limites du possible. Découvrez comment GPT-5 transforme notre rapport à l\'intelligence artificielle.',
             'is_relevant': True,
             'relevance_score': 9,
             'category': 'Large Language Models',
@@ -275,6 +286,8 @@ if __name__ == "__main__":
         },
         {
             'title': 'New Vision Transformer Architecture',
+            'translated_title': 'Nouvelle Architecture Vision Transformer : Record Battu sur ImageNet',
+            'hook': 'Les chercheurs viennent de franchir un cap décisif en vision par ordinateur.',
             'is_relevant': True,
             'relevance_score': 8,
             'category': 'Computer Vision',

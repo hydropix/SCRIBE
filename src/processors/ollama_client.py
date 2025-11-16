@@ -180,7 +180,7 @@ class OllamaClient:
                 'categorie': 'Unknown'
             }
 
-    def extract_insights(self, content: str, title: str = "") -> str:
+    def extract_insights(self, content: str, title: str = "") -> Dict[str, Any]:
         """
         Extracts key insights from content
 
@@ -189,18 +189,51 @@ class OllamaClient:
             title: The title (optional)
 
         Returns:
-            The insights in Markdown format
+            Dictionary with translated_title, hook, and insights
         """
         system_prompt = self.prompts.get('insight_extractor', '').format(language=self.language)
 
         user_prompt = f"Titre: {title}\n\nContenu:\n{content[:4000]}"
 
         try:
-            insights = self.generate(user_prompt, system_prompt)
-            return insights
+            response = self.generate(user_prompt, system_prompt)
+
+            # Parse JSON response
+            response = response.strip()
+            if '```json' in response:
+                response = response.split('```json')[1].split('```')[0].strip()
+            elif '```' in response:
+                response = response.split('```')[1].split('```')[0].strip()
+
+            result = json.loads(response)
+
+            # Validate structure
+            required_keys = ['translated_title', 'hook', 'insights']
+            if not all(key in result for key in required_keys):
+                self.logger.warning(f"Incomplete insight response structure: {result}")
+                return {
+                    'translated_title': title,
+                    'hook': '',
+                    'insights': str(result)
+                }
+
+            return result
+
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Error parsing JSON insights response: {e}\nResponse: {response}")
+            # Fallback: return the raw response as insights
+            return {
+                'translated_title': title,
+                'hook': '',
+                'insights': response if 'response' in locals() else f"Erreur JSON: {str(e)}"
+            }
         except Exception as e:
             self.logger.error(f"Error extracting insights: {e}")
-            return f"Erreur lors de l'extraction des insights: {str(e)}"
+            return {
+                'translated_title': title,
+                'hook': '',
+                'insights': f"Erreur lors de l'extraction des insights: {str(e)}"
+            }
 
     def generate_executive_summary(self, insights: List[str]) -> str:
         """

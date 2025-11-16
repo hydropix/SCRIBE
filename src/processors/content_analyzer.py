@@ -104,12 +104,17 @@ class ContentAnalyzer:
         # 2. Extract insights if relevant
         if is_relevant:
             try:
-                insights = self.ollama.extract_insights(content, title)
-                result['insights'] = insights
+                insights_data = self.ollama.extract_insights(content, title)
+                # Store the full insights data (dict with translated_title, hook, insights)
+                result['insights'] = insights_data.get('insights', '')
+                result['translated_title'] = insights_data.get('translated_title', title)
+                result['hook'] = insights_data.get('hook', '')
                 self.logger.info(f"✓ Relevant ({relevance['score']}/10): {title[:60]}")
             except Exception as e:
                 self.logger.error(f"Error extracting insights: {e}")
                 result['insights'] = "Erreur lors de l'extraction des insights"
+                result['translated_title'] = title
+                result['hook'] = ''
         else:
             self.logger.debug(f"✗ Not relevant ({relevance['score']}/10): {title[:60]}")
 
