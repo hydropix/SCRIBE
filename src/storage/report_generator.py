@@ -97,13 +97,9 @@ class ReportGenerator:
         # Group by category
         by_category = self._group_by_category(relevant_contents)
 
-        # Generate executive summary
-        executive_summary = self._generate_executive_summary(relevant_contents)
-
         # Build Markdown content
         markdown = self._build_markdown(
             report_date,
-            executive_summary,
             by_category,
             statistics
         )
@@ -118,7 +114,6 @@ class ReportGenerator:
 
         return {
             'path': str(report_path),
-            'executive_summary': executive_summary,
             'statistics': statistics
         }
 
@@ -145,37 +140,9 @@ class ReportGenerator:
 
         return sorted_grouped
 
-    def _generate_executive_summary(
-        self,
-        contents: List[Dict[str, Any]]
-    ) -> str:
-        """Generates an executive summary with Ollama"""
-
-        self.logger.info("Generating executive summary...")
-
-        # Retrieve all insights
-        all_insights = []
-        for content in contents:
-            if content.get('insights'):
-                # Limit the size of each insight
-                insight = f"- {content['title']}: {content['insights'][:200]}"
-                all_insights.append(insight)
-
-        # Limit the number of insights to avoid exceeding context
-        if len(all_insights) > 30:
-            all_insights = all_insights[:30]
-
-        try:
-            summary = self.ollama.generate_executive_summary(all_insights)
-            return summary
-        except Exception as e:
-            self.logger.error(f"Error generating executive summary: {e}")
-            return "Warning: Error generating executive summary."
-
     def _build_markdown(
         self,
         report_date: str,
-        executive_summary: str,
         by_category: Dict[str, List[Dict[str, Any]]],
         statistics: Dict[str, Any] = None
     ) -> str:

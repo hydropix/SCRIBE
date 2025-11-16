@@ -14,8 +14,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from dotenv import load_dotenv
 import yaml
 
-# Load environment variables
-load_dotenv()
+# Load environment variables (override=True to prioritize .env over system vars)
+load_dotenv(override=True)
 
 
 def print_header(title: str):

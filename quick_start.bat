@@ -31,6 +31,13 @@ if not exist ".env" (
     exit /b 1
 )
 
+REM Supprimer les logs de donnees brutes precedents
+if exist "data\raw_logs\" (
+    echo Nettoyage des logs de donnees brutes precedents...
+    del /Q "data\raw_logs\*.md" 2>nul
+    echo.
+)
+
 echo ========================================
 echo Lancement de VeilleAuto...
 echo ========================================

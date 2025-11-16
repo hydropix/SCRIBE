@@ -1,373 +1,355 @@
 <div align="center">
   <img src="SCRIBE_Logo.png" alt="SCRIBE Logo" width="200"/>
+
+  # SCRIBE
+  ### Source Content Retrieval and Intelligence Bot Engine
+
+  *Automated AI Technology Intelligence System*
 </div>
 
-# SCRIBE - Source Content Retrieval and Intelligence Bot Engine
+---
 
-Automated intelligence gathering system that collects, analyzes, and synthesizes the latest AI news from Reddit and YouTube, using Ollama (Mistral, Phi4, etc.) for analysis and Markdown report generation.
+## What is SCRIBE?
+
+SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube for you, analyzes content with a local AI (Ollama), and generates daily reports on the latest artificial intelligence news.
+
+**In short:** You configure your sources → SCRIBE collects → AI analyzes → You receive a Markdown report (+ optional Discord notification).
+
+---
+
+## How does it work?
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   REDDIT    │     │   YOUTUBE   │     │   DISCORD   │
+│  (23 subs)  │     │ (transcripts)│    │  (webhook)  │
+└──────┬──────┘     └──────┬──────┘     └──────▲──────┘
+       │                   │                   │
+       └─────────┬─────────┘                   │
+                 ▼                             │
+        ┌─────────────────┐                    │
+        │   1. COLLECT    │                    │
+        │   Posts/Videos  │                    │
+        └────────┬────────┘                    │
+                 ▼                             │
+        ┌─────────────────┐                    │
+        │   2. FILTER     │                    │
+        │  (SQLite Cache) │                    │
+        └────────┬────────┘                    │
+                 ▼                             │
+        ┌─────────────────┐                    │
+        │  3. AI ANALYSIS │                    │
+        │    (Ollama)     │                    │
+        │  Score 1-10     │                    │
+        │  Category       │                    │
+        │  Insights       │                    │
+        └────────┬────────┘                    │
+                 ▼                             │
+        ┌─────────────────┐                    │
+        │ 4. DEDUPLICATE  │                    │
+        │   (Semantic)    │                    │
+        └────────┬────────┘                    │
+                 ▼                             │
+        ┌─────────────────┐                    │
+        │   5. REPORT     │────────────────────┘
+        │   (Markdown)    │
+        └─────────────────┘
+```
+
+### The 5 Steps in Detail
+
+1. **Collect** - Fetches Reddit posts (title + comments) and YouTube videos (with full transcript)
+2. **Filter** - Skips already processed content (SQLite database)
+3. **AI Analysis** - Ollama evaluates each piece of content:
+   - Relevance score (1-10)
+   - Category (LLM, Robotics, AI Ethics, etc.)
+   - Key points summary
+4. **Deduplicate** - Removes semantic duplicates (not just identical titles)
+5. **Report** - Generates a Markdown file organized by category with executive summary
+
+---
 
 ## Features
 
-- **Multi-source collection**: Reddit (specialized subreddits) and YouTube (video transcripts)
-- **Local LLM analysis**: Uses Ollama with your RTX4090 GPU to filter and analyze content
-- **Intelligent deduplication**: Semantic detection of redundant content
-- **Markdown reports**: Daily generation of structured and professional reports
-- **Flexible configuration**: Easy model switching, context size, sources
-- **SQLite cache**: Avoids reprocessing already analyzed content
-- **Integrated scheduler**: Automatic daily execution
+- **Multi-source** : Reddit (23+ subreddits) and YouTube (channels + keywords)
+- **Local AI** : Uses Ollama (Mistral, Phi4, Llama3...) - no cloud API needed
+- **Smart deduplication** : Semantic detection of similar content
+- **Professional reports** : Structured Markdown with insights and metrics
+- **Discord notifications** : Automatic alerts with summary
+- **SQLite cache** : Avoids reprocessing the same content
+- **Scheduling** : Automatic daily execution
+- **Multilingual** : Reports in English, French, Spanish, etc.
 
-## Architecture
+---
 
-```
-SCRIBE/
-├── config/
-│   ├── settings.yaml          # Source and criteria configuration
-│   └── ollama_config.yaml     # Ollama configuration (model, prompts)
-├── src/
-│   ├── collectors/
-│   │   ├── reddit_collector.py    # Reddit collection via PRAW
-│   │   └── youtube_collector.py   # YouTube collection with transcripts
-│   ├── processors/
-│   │   ├── ollama_client.py       # Ollama client
-│   │   ├── content_analyzer.py    # Relevance analysis
-│   │   └── deduplicator.py        # Semantic deduplication
-│   ├── storage/
-│   │   ├── cache_manager.py       # SQLite cache management
-│   │   └── report_generator.py    # Markdown report generation
-│   ├── scheduler.py               # Daily scheduling
-│   └── utils.py                   # Utilities
-├── data/
-│   ├── cache.db                   # SQLite cache
-│   └── reports/                   # Generated reports
-├── logs/                          # Application logs
-├── main.py                        # Entry point
-└── requirements.txt
-```
+## Quick Installation
 
-## Prerequisites
+### Prerequisites
 
-### 1. Python 3.10+
+- **Python 3.10+**
+- **Ollama** installed and running
+- **API Keys** for Reddit and YouTube (optional)
+
+### 1. Install Ollama
 
 ```bash
-python --version
-```
-
-### 2. Ollama installed and running
-
-```bash
-# Install Ollama: https://ollama.ai/
-
-# Start Ollama server
-ollama serve
-
-# Download a model (Mistral recommended for RTX4090)
+# Download from https://ollama.ai/
+# Then:
 ollama pull mistral
-
-# Or Phi4 (lighter)
-ollama pull phi4
 ```
 
-### 3. API Credentials
-
-#### Reddit API
-
-1. Go to https://www.reddit.com/prefs/apps
-2. Create an application (type: "script")
-3. Note the `client_id` and `client_secret`
-
-#### YouTube API
-
-1. Go to https://console.cloud.google.com/
-2. Create a project
-3. Enable "YouTube Data API v3"
-4. Create an API key in "Credentials"
-
-## Installation
-
-### 1. Clone the repository
+### 2. Clone and Configure
 
 ```bash
+git clone https://github.com/your-repo/SCRIBE.git
 cd SCRIBE
-```
 
-### 2. Create a virtual environment
-
-```bash
+# Create virtual environment
 python -m venv venv
+venv\Scripts\activate  # Windows
+# or: source venv/bin/activate  # Linux/Mac
 
-# Windows
-venv\Scripts\activate
-
-# Linux/Mac
-source venv/bin/activate
-```
-
-### 3. Install dependencies
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 4. Configure credentials
+### 3. Configure Credentials
 
-```bash
-# Copy the template
-copy .env.example .env
-
-# Edit .env with your credentials
-notepad .env
-```
-
-Fill with your actual values:
+Create a `.env` file at the root:
 
 ```env
-REDDIT_CLIENT_ID=your_client_id
-REDDIT_CLIENT_SECRET=your_client_secret
+# Reddit (https://reddit.com/prefs/apps)
+REDDIT_CLIENT_ID=your_id
+REDDIT_CLIENT_SECRET=your_secret
 REDDIT_USER_AGENT=SCRIBE/1.0
 
-YOUTUBE_API_KEY=your_api_key
+# YouTube (https://console.cloud.google.com/)
+YOUTUBE_API_KEY=your_key
 
+# Ollama
 OLLAMA_HOST=http://localhost:11434
+
+# Discord (optional)
+DISCORD_WEBHOOK_URL=your_webhook
 ```
 
-## Configuration
+**Note**: Without Reddit/YouTube credentials, the app will still work but without those sources.
 
-### Customize sources (config/settings.yaml)
-
-```yaml
-reddit:
-  subreddits:
-    - MachineLearning
-    - artificial
-    - LocalLLaMA
-    # Add your subreddits...
-
-youtube:
-  keywords:
-    - "AI news"
-    - "LLM tutorial"
-  channels:
-    - "@TwoMinutePapers"
-    # Add your channels...
-```
-
-### Change Ollama model (config/ollama_config.yaml)
-
-```yaml
-# Easily switch models
-model: "mistral"  # or "phi4", "llama3", "qwen2.5"...
-
-parameters:
-  num_ctx: 32768  # Context size
-  temperature: 0.3
-```
+---
 
 ## Usage
 
-### Mode 1: Single execution (test)
+### Run a Collection
 
 ```bash
 python main.py --mode once
 ```
 
-Executes a complete intelligence cycle immediately.
+The report will be generated in `data/reports/`.
 
-### Mode 2: Daily scheduling
+### Schedule Daily Execution
 
 ```bash
-# Start scheduler (runs daily at 08:00)
-python main.py --mode schedule
-
-# With immediate execution then scheduling
 python main.py --mode schedule --run-now
 ```
 
-Modify the time in `config/settings.yaml`:
+Default: every day at 07:00 (configurable in `config/settings.yaml`).
 
-```yaml
-scheduler:
-  run_time: "08:00"  # 24h format
-  timezone: "Europe/Paris"
-```
-
-### Mode 3: Statistics
+### View Statistics
 
 ```bash
 python main.py --mode stats
 ```
 
-Displays cache statistics (processed content, relevance rate, etc.).
+Shows: processed content, relevance rate, breakdown by source/category.
 
-## Execution Workflow
+### Change Report Language
 
-When you run the intelligence gathering, here's what happens:
+```bash
+python main.py --mode once --lang en  # English
+python main.py --mode once --lang fr  # French (default)
+```
 
-1. **Collection**: Retrieval of recent Reddit posts and YouTube videos
-2. **Cache filtering**: Exclusion of already processed content
-3. **LLM analysis**: Ollama analyzes each content to:
-   - Determine relevance (score /10)
-   - Assign a category
-   - Extract key insights
-4. **Deduplication**: Elimination of redundant content
-5. **Report generation**: Creation of a Markdown file in `data/reports/`
+---
 
-## Report Examples
+## Configuration
 
-Generated reports look like:
+### Sources (config/settings.yaml)
 
-```markdown
-# AI Intelligence Report - 2025-01-15
+```yaml
+reddit:
+  subreddits:
+    - MachineLearning
+    - LocalLLaMA
+    - OpenAI
+    # Add your subreddits...
+  posts_limit: 5
+  timeframe: "day"
 
-## 📊 Executive Summary
+youtube:
+  keywords:
+    - "AI research"
+  channels:
+    - "@YannicKilcher"
+    - "@AIExplained-"
+  languages: ["en", "fr"]
+```
 
-This week, major trends include improvements in LLM reasoning
-capabilities and new vision-language architectures...
+### AI Model (config/ollama_config.yaml)
 
-## 📈 Metrics
+```yaml
+model: "mistral"  # or phi4, llama3, qwen2.5...
 
-- Total analyzed: 150
-- Relevant: 23 (15.3%)
-- Average score: 6.2/10
+parameters:
+  temperature: 0.3
+  num_ctx: 32768
+```
+
+### Relevance Threshold
+
+```yaml
+analysis:
+  relevance_threshold: 7  # Keep only score >= 7/10
+```
+
+### Discord Notifications
+
+```yaml
+discord:
+  enabled: true
+  send_metrics: true
+  mention_role: "@everyone"  # or "" to disable
+```
+
+## Generated Report Example
+
+# SCRIBE - AI INTELLIGENCE REPORT
+## 2025-01-15 | 08:00
+
+AI continues to advance rapidly with major breakthroughs
+in LLM reasoning and multimodal architectures...
 
 ## Large Language Models
+   3 insight(s)
 
 ### 1. GPT-5 Released with Enhanced Reasoning
-
 **Source**: Reddit
-**Link**: https://reddit.com/...
+**Link**: https://reddit.com/r/OpenAI/...
 **Relevance**: 9/10
+**Author**: u/ai_researcher
+**Date**: 2025-01-14
 
-**Insights**:
-OpenAI launched GPT-5 with significant improvements...
+**Insights**: OpenAI launched GPT-5 with significant improvements
+in logical reasoning and contextual understanding...
+
+---
+
+## Robotics
+   1 insight(s)
+
+### 1. Tesla Optimus Gen 3 Demo
+**Source**: YouTube
+**Link**: https://youtube.com/watch?v=...
+**Relevance**: 8/10
+
+**Insights**: New demonstration of Tesla's humanoid robot...
+
+---
+
+*Report generated by SCRIBE - 4 total insights*
 ```
 
-## Advanced Customization
+---
 
-### Modify system prompts
+## Analysis Categories
 
-Edit `config/ollama_config.yaml` to adjust instructions given to Ollama:
+SCRIBE automatically classifies content into 22 categories:
 
-```yaml
-prompts:
-  relevance_analyzer: |
-    You are an AI expert. Analyze the content and determine
-    its relevance for technology intelligence...
-```
+- Large Language Models
+- AI Ethics & Safety
+- Computer Vision
+- Robotics
+- AI Agents & Autonomous Systems
+- Generative AI
+- AI Hardware & Infrastructure
+- Open Source Models
+- AI in Healthcare
+- AI Regulation & Policy
+- ... and more
 
-### Adjust relevance threshold
-
-In `config/settings.yaml`:
-
-```yaml
-analysis:
-  relevance_threshold: 7  # Only content >= 7/10
-```
-
-### Modify categories
-
-```yaml
-analysis:
-  categories:
-    - "Large Language Models"
-    - "Computer Vision"
-    - "Robotics"  # Add new categories
-```
-
-## RTX4090 Optimization
-
-Your GPU can handle large models. Recommendations:
-
-- **Mistral (7B)**: Excellent speed/quality balance
-- **Phi4 (14B)**: More compact, very performant
-- **Llama3 (70B quantized)**: Maximum quality if you have time
-
-Adjust `num_ctx` according to your needs:
-
-```yaml
-parameters:
-  num_ctx: 32768  # Mistral supports 32K
-  # or 128000 for Llama3 with very long contexts
-```
+---
 
 ## Troubleshooting
 
-### Error "Model not found"
+### "Model not found"
 
 ```bash
-# Check installed models
-ollama list
-
-# Install missing model
-ollama pull mistral
+ollama list              # View installed models
+ollama pull mistral      # Install missing model
 ```
 
-### Error "Reddit credentials invalid"
+### "Reddit credentials invalid"
 
-Verify that your `.env` contains the correct values from https://www.reddit.com/prefs/apps
+Check that your `.env` contains the correct values from https://reddit.com/prefs/apps
 
-### Error "YouTube quota exceeded"
+### "YouTube quota exceeded"
 
-YouTube API has a daily free limit (10,000 units). Reduce `videos_limit` in `config/settings.yaml`.
+YouTube API has a free daily limit. Reduce `videos_limit` in `config/settings.yaml`.
 
 ### Ollama too slow
 
-Reduce batch size in `config/ollama_config.yaml`:
+- Reduce `batch_size` in `config/ollama_config.yaml`
+- Or use a lighter model (phi4 vs llama3)
 
-```yaml
-performance:
-  batch_size: 3  # Instead of 5
-```
+### Not enough insights
 
-## Logging
+- Lower `relevance_threshold` (e.g., 5 instead of 7)
+- Increase `posts_limit` or `videos_limit`
+- Add more subreddits/channels
 
-Logs are saved in `logs/scribe.log`.
+---
 
-For more details, modify the log level in `src/utils.py`:
+## Logs
+
+- **Application**: `logs/scribe.log`
+- **Raw data**: `data/raw_logs/` (for debugging)
+
+For more details:
 
 ```python
+# In src/utils.py
 logging.basicConfig(level=logging.DEBUG)  # Instead of INFO
 ```
 
-## Unit Tests
-
-Each module can be tested individually:
-
-```bash
-# Test Reddit collector
-python src/collectors/reddit_collector.py
-
-# Test analyzer
-python src/processors/content_analyzer.py
-
-# Test Ollama
-python src/processors/ollama_client.py
-```
-
-## Contributing
-
-This project is designed to be easily extensible:
-
-- Add new sources in `src/collectors/`
-- Create new analysis processors in `src/processors/`
-- Modify report templates in `src/storage/report_generator.py`
+---
 
 ## Roadmap
 
-- [ ] Support for additional sources (HackerNews, ArXiv)
-- [ ] Notifications (email, Discord, Slack)
-- [ ] Interactive web dashboard
-- [ ] PDF export of reports
-- [ ] Sentiment analysis
+- [x] Reddit and YouTube collection
+- [x] Local AI analysis (Ollama)
+- [x] Semantic deduplication
+- [x] Markdown reports
+- [x] Discord notifications
 - [ ] Emerging trend detection
+
+---
+
+## Contributing
+
+The project is designed to be extensible:
+
+- Add sources: `src/collectors/`
+- New processors: `src/processors/`
+- Report templates: `src/storage/report_generator.py`
+
+---
 
 ## License
 
 MIT License - Free to use and modify
 
-## Support
-
-For questions or bugs, open an issue on GitHub.
-
 ---
 
-**Developed with Mistral/Phi4 on RTX4090** 🚀
+<div align="center">
+  <b>SCRIBE - Your Automated AI Intelligence Assistant</b>
+</div>

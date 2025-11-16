@@ -14,7 +14,9 @@ from src.utils import (
     setup_logging,
     load_env_variables,
     ensure_directories,
-    load_config
+    load_config,
+    clear_raw_logs,
+    save_raw_data_log
 )
 from src.collectors.reddit_collector import RedditCollector
 from src.collectors.youtube_collector import YouTubeCollector
@@ -101,11 +103,24 @@ class SCRIBE:
         self.logger.info("STEP 0: Cleaning up old cache entries...")
         self.cache.cleanup_old_entries(days_to_keep=90)
 
+        # 0.5 Clear previous raw data logs
+        self.logger.info("Clearing previous raw data logs...")
+        clear_raw_logs()
+
         # 1. Data collection
         self.logger.info("\nSTEP 1: Collecting data from sources...")
 
         reddit_posts = self._collect_reddit()
         youtube_videos = self._collect_youtube()
+
+        # Save raw data to markdown logs
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        if reddit_posts:
+            reddit_log_path = save_raw_data_log(reddit_posts, 'reddit', timestamp)
+            self.logger.info(f"Raw Reddit data saved to: {reddit_log_path}")
+        if youtube_videos:
+            youtube_log_path = save_raw_data_log(youtube_videos, 'youtube', timestamp)
+            self.logger.info(f"Raw YouTube data saved to: {youtube_log_path}")
 
         total_collected = len(reddit_posts) + len(youtube_videos)
         self.logger.info(f"Total collected: {total_collected} items")
@@ -199,10 +214,8 @@ class SCRIBE:
         if discord_config.get('enabled', False) and report_result:
             self.logger.info("\nSTEP 7: Sending Discord notification...")
             try:
-                self.discord_notifier.send_report_summary(
+                self.discord_notifier.send_full_report(
                     report_path=report_result['path'],
-                    executive_summary=report_result['executive_summary'],
-                    metrics=report_result['statistics'],
                     mention_role=discord_config.get('mention_role', '')
                 )
             except Exception as e:

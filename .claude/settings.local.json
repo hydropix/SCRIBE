@@ -20,7 +20,12 @@
       "Bash(nul)",
       "Bash(mkdir:*)",
       "Bash(python -m py_compile:*)",
-      "Bash(python test_discord_split.py:*)"
+      "Bash(python test_discord_split.py:*)",
+      "Bash(curl:*)",
+      "Bash(schtasks /query:*)",
+      "Bash(cmd /c \"schtasks /query /tn \"\"SCRIBE - Veille IA Quotidienne\"\" /v /fo LIST\")",
+      "Bash(cmd /c schtasks /query /tn \"SCRIBE - Veille IA Quotidienne\" /v /fo LIST)",
+      "Bash(powershell -Command:*)"
     ],
     "deny": [],
     "ask": []
