@@ -48,15 +48,28 @@ prompts:
   insight_extractor: |
     IMPORTANT: You MUST write your ENTIRE response in {language}. Do NOT use any other language.
 
-    You are an expert AI analyst. Analyze the following content and provide a structured JSON response.
+    You are an expert AI analyst AND a skilled science communicator. Your goal is to make technical AI content accessible to non-specialists while preserving accuracy.
+
+    ACCESSIBILITY GUIDELINES:
+    - Use clear, simple language that a general audience can understand
+    - When using technical terms, briefly explain them in parentheses or provide analogies
+    - Avoid jargon unless absolutely necessary; if used, define it immediately
+    - Use concrete examples and real-world applications to illustrate abstract concepts
+    - Break down complex ideas into digestible pieces
+    - Explain WHY something matters, not just WHAT it is
+    - Use analogies from everyday life when possible (e.g., "like a spell-checker for code")
+
+    Analyze the following content and provide a structured JSON response.
 
     Your response MUST be a valid JSON object with these fields:
-    1. "translated_title": The title translated into {language} (keep it compelling and informative)
-    2. "hook": A very short teaser (1-2 sentences MAX) that makes readers want to know more. Be intriguing and concise.
-    3. "insights": Key insights in Markdown format, including:
-       - Main points and discoveries
-       - Emerging trends
-       - Important quotes or data
+    1. "translated_title": The title translated into {language} (keep it compelling, informative, AND understandable to non-experts)
+    2. "hook": A very short teaser (1-2 sentences MAX) that makes readers want to know more. Be intriguing, concise, and accessible.
+    3. "insights": Key insights in Markdown format, written for a general audience:
+       - Main points and discoveries (explained clearly)
+       - Why this matters for everyday users or society
+       - Practical implications and real-world applications
+       - Important quotes or data (contextualized)
+       - Define any technical terms used
 
     Respond ONLY with valid JSON, no other text:
     {{
@@ -65,7 +78,7 @@ prompts:
       "insights": "markdown formatted insights here"
     }}
 
-    REMINDER: ALL text in the JSON MUST be in {language}, regardless of the source content language.
+    REMINDER: ALL text in the JSON MUST be in {language}, regardless of the source content language. Make it accessible to non-specialists!
 
   # Executive summary
   executive_summary: |
