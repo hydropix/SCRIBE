@@ -162,6 +162,44 @@ python main.py --mode once --lang fr  # French (default)
 
 ---
 
+## Daily Scheduler (Windows)
+
+To run SCRIBE automatically every day, use the Windows Task Scheduler:
+
+### Using Task Scheduler GUI (Recommended)
+
+1. Press **Win + R**, type `taskschd.msc`, press Enter
+2. Click **Create Basic Task** (right panel)
+3. **Name**: "SCRIBE Daily Report" → Next
+4. **Trigger**: Select "Daily" → Next
+5. **Time**: Set your preferred hour (e.g., 08:00) → Next
+6. **Action**: Select "Start a program" → Next
+7. **Program/script**: Browse to `C:\path\to\SCRIBE\quick_start.bat`
+8. **Start in** (Add arguments field): `C:\path\to\SCRIBE`
+9. Click **Finish**
+
+**Important**: Ensure Ollama is running when the task executes, or configure Ollama to start with Windows.
+
+### Command Line Alternative
+
+```powershell
+schtasks /create /tn "SCRIBE Daily Report" /tr "C:\path\to\SCRIBE\quick_start.bat" /sc daily /st 08:00
+```
+
+Replace `C:\path\to\SCRIBE` with your actual installation path.
+
+### Manage the Task
+
+```powershell
+# Verify the task
+schtasks /query /tn "SCRIBE Daily Report"
+
+# Delete the task
+schtasks /delete /tn "SCRIBE Daily Report" /f
+```
+
+---
+
 ## Configuration
 
 ### Sources (config/settings.yaml)
