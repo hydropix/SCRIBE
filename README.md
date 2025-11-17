@@ -1,7 +1,6 @@
 <div align="center">
-  <img src="SCRIBE_Logo.png" alt="SCRIBE Logo" width="200"/>
-
-  # SCRIBE
+  <img src="SCRIBE_Logo.png" alt="SCRIBE Logo" width="600"/>
+  
   ### Source Content Retrieval and Intelligence Bot Engine
 
   *Automated AI Technology Intelligence System*
