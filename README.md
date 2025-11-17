@@ -1,7 +1,6 @@
 <div align="center">
-  <img src="SCRIBE_Logo.png" alt="SCRIBE Logo" width="200"/>
-
-  # SCRIBE
+  <img src="SCRIBE_Logo.png" alt="SCRIBE Logo" width="600"/>
+  
   ### Source Content Retrieval and Intelligence Bot Engine
 
   *Automated AI Technology Intelligence System*
@@ -22,7 +21,7 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube for yo
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   REDDIT    │     │   YOUTUBE   │     │   DISCORD   │
-│  (23 subs)  │     │ (transcripts)│    │  (webhook)  │
+│    subs     │     │ transcripts │     │   webhook   │
 └──────┬──────┘     └──────┬──────┘     └──────▲──────┘
        │                   │                   │
        └─────────┬─────────┘                   │
@@ -39,7 +38,7 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube for yo
                  ▼                             │
         ┌─────────────────┐                    │
         │  3. AI ANALYSIS │                    │
-        │    (Ollama)     │                    │
+        │      (LLM)      │                    │
         │  Score 1-10     │                    │
         │  Category       │                    │
         │  Insights       │                    │
