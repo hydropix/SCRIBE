@@ -4,6 +4,13 @@ echo VeilleAuto - Demarrage rapide
 echo ========================================
 echo.
 
+REM Mettre a jour le depot si c'est un repo git
+if exist ".git\" (
+    echo Mise a jour du depot...
+    git pull
+    echo.
+)
+
 REM Verifier si l'environnement virtuel existe
 if not exist "venv\" (
     echo Creation de l'environnement virtuel...
@@ -24,11 +31,18 @@ if not exist "venv\Lib\site-packages\praw\" (
 
 REM Verifier si .env existe
 if not exist ".env" (
-    echo ATTENTION: Fichier .env non trouve!
-    echo Veuillez copier .env.example vers .env et le remplir avec vos credentials.
-    echo.
-    pause
-    exit /b 1
+    if exist ".env.example" (
+        echo Fichier .env non trouve, copie de .env.example...
+        copy ".env.example" ".env"
+        echo ATTENTION: Veuillez editer le fichier .env avec vos credentials avant de continuer.
+        echo.
+        pause
+    ) else (
+        echo ERREUR: Fichiers .env et .env.example non trouves!
+        echo.
+        pause
+        exit /b 1
+    )
 )
 
 REM Supprimer les logs de donnees brutes precedents

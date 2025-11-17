@@ -87,7 +87,7 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube for yo
 
 - **Python 3.10+**
 - **Ollama** installed and running
-- **API Keys** for Reddit and YouTube (optional)
+- **Git** (for automatic updates)
 
 ### 1. Install Ollama
 
@@ -97,24 +97,24 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube for yo
 ollama pull mistral
 ```
 
-### 2. Clone and Configure
+### 2. Clone and Run
 
 ```bash
 git clone https://github.com/your-repo/SCRIBE.git
 cd SCRIBE
-
-# Create virtual environment
-python -m venv venv
-venv\Scripts\activate  # Windows
-# or: source venv/bin/activate  # Linux/Mac
-
-# Install dependencies
-pip install -r requirements.txt
+quick_start.bat   # Windows
 ```
 
-### 3. Configure Credentials
+**That's it!** The script automatically:
+- Updates the repository (`git pull`)
+- Creates the virtual environment
+- Installs all dependencies
+- Copies `.env.example` to `.env` (if needed)
+- Launches the collection
 
-Create a `.env` file at the root:
+### 3. Configure Your Credentials
+
+On first run, edit the `.env` file with your API keys:
 
 ```env
 # Reddit (https://reddit.com/prefs/apps)
