@@ -21,7 +21,7 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube for yo
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   REDDIT    │     │   YOUTUBE   │     │   DISCORD   │
-│  (23 subs)  │     │ (transcripts)│    │  (webhook)  │
+│    subs     │     │ transcripts │     │   webhook   │
 └──────┬──────┘     └──────┬──────┘     └──────▲──────┘
        │                   │                   │
        └─────────┬─────────┘                   │
@@ -38,7 +38,7 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube for yo
                  ▼                             │
         ┌─────────────────┐                    │
         │  3. AI ANALYSIS │                    │
-        │    (Ollama)     │                    │
+        │      (LLM)      │                    │
         │  Score 1-10     │                    │
         │  Category       │                    │
         │  Insights       │                    │
