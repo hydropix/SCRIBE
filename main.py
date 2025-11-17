@@ -213,10 +213,21 @@ class SCRIBE:
         if discord_config.get('enabled', False) and report_result:
             self.logger.info("\nSTEP 7: Sending Discord notification...")
             try:
-                self.discord_notifier.send_full_report(
-                    report_path=report_result['path'],
-                    mention_role=discord_config.get('mention_role', '')
-                )
+                # Check if rich embeds are enabled (with images)
+                use_rich_embeds = discord_config.get('rich_embeds', True)
+
+                if use_rich_embeds:
+                    # Send rich embeds with images
+                    self.discord_notifier.send_rich_report(
+                        relevant_contents=unique,
+                        mention_role=discord_config.get('mention_role', '')
+                    )
+                else:
+                    # Send plain text report (legacy mode)
+                    self.discord_notifier.send_full_report(
+                        report_path=report_result['path'],
+                        mention_role=discord_config.get('mention_role', '')
+                    )
             except Exception as e:
                 self.logger.error(f"Discord notification failed (non-blocking): {e}")
 
@@ -278,7 +289,8 @@ class SCRIBE:
                 'url': post.get('permalink', ''),
                 'created_utc': post.get('created_utc'),
                 'author': post.get('author'),
-                'subreddit': post.get('subreddit')
+                'subreddit': post.get('subreddit'),
+                'image_url': post.get('image_url')  # Include image URL if available
             })
 
         # YouTube
@@ -290,7 +302,8 @@ class SCRIBE:
                 'text': self.youtube_collector.get_video_full_text(video),
                 'url': video.get('url', ''),
                 'published_at': video.get('published_at'),
-                'channel_title': video.get('channel_title')
+                'channel_title': video.get('channel_title'),
+                'video_id': video['video_id']  # Include video_id for thumbnail
             })
 
         return all_contents

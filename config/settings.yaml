@@ -112,6 +112,11 @@ discord:
   # Enable/disable Discord notifications
   enabled: true
 
+  # Use rich embeds with images (recommended)
+  # If true: sends formatted embeds with Reddit images and YouTube thumbnails
+  # If false: sends plain text report (legacy mode)
+  rich_embeds: true
+
   # Send executive summary in notification
   send_executive_summary: true
 
