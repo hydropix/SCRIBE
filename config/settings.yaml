@@ -107,14 +107,6 @@ reports:
   # This controls the language for insights extraction and executive summary
   language: "fr"
 
-# Scheduling
-scheduler:
-  # Daily execution time (24h format)
-  run_time: "07:00"
-
-  # Timezone
-  timezone: "Europe/Paris"
-
 # Discord Notifications
 discord:
   # Enable/disable Discord notifications

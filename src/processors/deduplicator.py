@@ -1,4 +1,4 @@
-"""Content deduplicator using Ollama for semantic detection"""
+"""Content deduplicator using fast similarity detection"""
 
 import logging
 from typing import List, Dict, Any, Set
@@ -9,6 +9,7 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.processors.ollama_client import OllamaClient
+from src.processors.fast_similarity import FastSimilarityDetector
 
 
 class ContentDeduplicator:
@@ -16,15 +17,31 @@ class ContentDeduplicator:
 
     def __init__(
         self,
-        ollama_config_path: str = "config/ollama_config.yaml"
+        ollama_config_path: str = "config/ollama_config.yaml",
+        use_fast_detection: bool = True,
+        similarity_threshold: float = 0.67
     ):
         """
         Initializes the deduplicator
 
         Args:
             ollama_config_path: Path to Ollama configuration
+            use_fast_detection: Use fast similarity detection instead of LLM
+            similarity_threshold: Threshold for considering contents as duplicates (0.67 recommended - good balance between precision and recall)
         """
         self.logger = logging.getLogger("SCRIBE.Deduplicator")
+        self.use_fast_detection = use_fast_detection
+        self.similarity_threshold = similarity_threshold
+
+        # Initialize fast similarity detector (primary method)
+        if use_fast_detection:
+            self.fast_detector = FastSimilarityDetector(
+                tfidf_threshold=similarity_threshold,
+                simhash_threshold=0.85
+            )
+            self.logger.info(f"Fast similarity detector initialized (threshold={similarity_threshold})")
+
+        # Keep Ollama as fallback (optional)
         self.ollama = OllamaClient(ollama_config_path)
 
         self.logger.info("Deduplicator initialized")
@@ -118,11 +135,39 @@ class ContentDeduplicator:
             True if duplicate, False otherwise
         """
         new_text = self._get_comparison_text(new_content, title_key, text_key)
+        new_title = new_content.get(title_key, '')
 
         # Compare with existing contents (starting from end, most recent)
         # Limit to last 50 contents for performance
         check_limit = min(50, len(existing_contents))
 
+        # Use fast detection if enabled
+        if self.use_fast_detection:
+            existing_texts = []
+            existing_titles = []
+
+            for existing in existing_contents[-check_limit:]:
+                existing_texts.append(self._get_comparison_text(existing, title_key, text_key))
+                existing_titles.append(existing.get(title_key, ''))
+
+            is_dup, similarity, idx = self.fast_detector.is_duplicate(
+                new_text,
+                existing_texts,
+                new_title,
+                existing_titles,
+                self.similarity_threshold
+            )
+
+            if is_dup:
+                self.logger.debug(
+                    f"Duplicate detected (fast): similarity={similarity:.3f} "
+                    f"with '{existing_titles[idx][:50]}...'"
+                )
+                return True
+
+            return False
+
+        # Fallback to LLM-based detection (slower)
         for existing in existing_contents[-check_limit:]:
             existing_text = self._get_comparison_text(existing, title_key, text_key)
 

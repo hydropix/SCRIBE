@@ -25,7 +25,10 @@
       "Bash(schtasks /query:*)",
       "Bash(cmd /c \"schtasks /query /tn \"\"SCRIBE - Veille IA Quotidienne\"\" /v /fo LIST\")",
       "Bash(cmd /c schtasks /query /tn \"SCRIBE - Veille IA Quotidienne\" /v /fo LIST)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(del \"c:\\Users\\AI_02\\Documents\\GitHub\\SCRIBE\\src\\scheduler.py\")",
+      "Bash(del \"c:\\Users\\AI_02\\Documents\\GitHub\\SCRIBE\\src\\__pycache__\\scheduler.cpython-311.pyc\" 2)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

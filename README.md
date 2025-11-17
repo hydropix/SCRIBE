@@ -77,7 +77,6 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube for yo
 - **Professional reports** : Structured Markdown with insights and metrics
 - **Discord notifications** : Automatic alerts with summary
 - **SQLite cache** : Avoids reprocessing the same content
-- **Scheduling** : Automatic daily execution
 - **Multilingual** : Reports in English, French, Spanish, etc.
 
 ---
@@ -146,14 +145,6 @@ python main.py --mode once
 ```
 
 The report will be generated in `data/reports/`.
-
-### Schedule Daily Execution
-
-```bash
-python main.py --mode schedule --run-now
-```
-
-Default: every day at 07:00 (configurable in `config/settings.yaml`).
 
 ### View Statistics
 

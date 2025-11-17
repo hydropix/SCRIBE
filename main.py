@@ -25,7 +25,6 @@ from src.processors.deduplicator import ContentDeduplicator
 from src.storage.cache_manager import CacheManager
 from src.storage.report_generator import ReportGenerator
 from src.notifiers.discord_notifier import DiscordNotifier
-from src.scheduler import VeilleScheduler
 
 
 class SCRIBE:
@@ -325,15 +324,9 @@ def main():
 
     parser.add_argument(
         '--mode',
-        choices=['once', 'schedule', 'stats'],
+        choices=['once', 'stats'],
         default='once',
-        help='Execution mode: once (single run), schedule (daily), stats (statistics)'
-    )
-
-    parser.add_argument(
-        '--run-now',
-        action='store_true',
-        help='In schedule mode, execute immediately before scheduling'
+        help='Execution mode: once (single run), stats (statistics)'
     )
 
     parser.add_argument(
@@ -355,11 +348,6 @@ def main():
     elif args.mode == 'once':
         # Single execution
         scribe.run_veille()
-
-    elif args.mode == 'schedule':
-        # Scheduled execution
-        scheduler = VeilleScheduler(scribe.run_veille)
-        scheduler.start(run_immediately=args.run_now)
 
 
 if __name__ == "__main__":

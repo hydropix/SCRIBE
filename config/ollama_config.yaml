@@ -55,7 +55,6 @@ prompts:
     2. "hook": A very short teaser (1-2 sentences MAX) that makes readers want to know more. Be intriguing and concise.
     3. "insights": Key insights in Markdown format, including:
        - Main points and discoveries
-       - Practical implications
        - Emerging trends
        - Important quotes or data
 

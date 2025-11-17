@@ -246,9 +246,11 @@ class ReportGenerator:
         elif metadata.get('published_at'):
             metadata_parts.append(f"Date: {metadata['published_at'][:10]}")
 
-        # Join metadata with separator
+        # Join metadata with line breaks
         if metadata_parts:
-            lines.append(f"📎 {' | '.join(metadata_parts)}")
+            lines.append("📎 **Metadata**")
+            for part in metadata_parts:
+                lines.append(f"  - {part}")
             lines.append("")
 
         lines.append("")
