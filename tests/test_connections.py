@@ -84,56 +84,94 @@ def test_configuration_files():
     """Test that configuration files exist and are valid."""
     print_header("CONFIGURATION FILES")
 
-    config_files = [
-        "config/settings.yaml",
-        "config/ollama_config.yaml",
-    ]
-
     all_valid = True
     configs = {}
 
-    for config_file in config_files:
-        config_path = Path(config_file)
-        if config_path.exists():
+    # Test global config
+    global_config_path = Path("config/global.yaml")
+    if global_config_path.exists():
+        try:
+            with open(global_config_path, 'r', encoding='utf-8') as f:
+                config_data = yaml.safe_load(f)
+                configs["config/global.yaml"] = config_data
+            print_result("config/global.yaml", True, f"Valid YAML with {len(config_data)} top-level keys")
+
+            if "ollama" in config_data:
+                model = config_data["ollama"].get("model", "unknown")
+                print(f"    - Ollama model: {model}")
+        except yaml.YAMLError as e:
+            print_result("config/global.yaml", False, f"Invalid YAML: {e}")
+            all_valid = False
+    else:
+        print_result("config/global.yaml", False, "File not found")
+        all_valid = False
+
+    # Discover and test all packages
+    packages_dir = Path("packages")
+    if not packages_dir.exists():
+        print_result("packages/", False, "Packages directory not found")
+        return False
+
+    packages = [d for d in packages_dir.iterdir() if d.is_dir()]
+
+    if not packages:
+        print_result("packages/", False, "No packages found")
+        return False
+
+    print(f"\nFound {len(packages)} package(s):")
+
+    for package_dir in packages:
+        package_name = package_dir.name
+        print(f"\n  Package: {package_name}")
+
+        # Check settings.yaml
+        settings_path = package_dir / "settings.yaml"
+        if settings_path.exists():
             try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config_data = yaml.safe_load(f)
-                    configs[config_file] = config_data
-                print_result(f"{config_file}", True, f"Valid YAML with {len(config_data)} top-level keys")
+                with open(settings_path, 'r', encoding='utf-8') as f:
+                    settings = yaml.safe_load(f)
+                    configs[str(settings_path)] = settings
+                print_result(f"    settings.yaml", True, f"Valid YAML")
+
+                # Show package details
+                if "reddit" in settings:
+                    subreddits = settings["reddit"].get("subreddits", [])
+                    print(f"        - Reddit subreddits: {len(subreddits)}")
+
+                if "youtube" in settings:
+                    keywords = settings["youtube"].get("keywords", [])
+                    channels = settings["youtube"].get("channels", [])
+                    print(f"        - YouTube keywords: {len(keywords)}")
+                    print(f"        - YouTube channels: {len(channels)}")
+
+                if "analysis" in settings:
+                    categories = settings["analysis"].get("categories", [])
+                    print(f"        - Analysis categories: {len(categories)}")
+
+                if "report" in settings:
+                    language = settings["report"].get("language", "en")
+                    print(f"        - Report language: {language}")
+
             except yaml.YAMLError as e:
-                print_result(f"{config_file}", False, f"Invalid YAML: {e}")
+                print_result(f"    settings.yaml", False, f"Invalid YAML: {e}")
                 all_valid = False
         else:
-            print_result(f"{config_file}", False, "File not found")
+            print_result(f"    settings.yaml", False, "Not found")
             all_valid = False
 
-    # Validate key configuration entries
-    if "config/settings.yaml" in configs:
-        settings = configs["config/settings.yaml"]
-        print("\nConfiguration details:")
-
-        if "reddit" in settings:
-            subreddits = settings["reddit"].get("subreddits", [])
-            print(f"    - Reddit subreddits configured: {len(subreddits)}")
-
-        if "youtube" in settings:
-            keywords = settings["youtube"].get("keywords", [])
-            channels = settings["youtube"].get("channels", [])
-            print(f"    - YouTube keywords: {len(keywords)}")
-            print(f"    - YouTube channels: {len(channels)}")
-
-        if "analysis" in settings:
-            categories = settings["analysis"].get("categories", [])
-            print(f"    - Analysis categories: {len(categories)}")
-
-        if "report" in settings:
-            language = settings["report"].get("language", "en")
-            print(f"    - Report language: {language}")
-
-    if "config/ollama_config.yaml" in configs:
-        ollama_config = configs["config/ollama_config.yaml"]
-        model = ollama_config.get("model", "unknown")
-        print(f"    - Ollama model: {model}")
+        # Check prompts.yaml
+        prompts_path = package_dir / "prompts.yaml"
+        if prompts_path.exists():
+            try:
+                with open(prompts_path, 'r', encoding='utf-8') as f:
+                    yaml.safe_load(f)
+                print_result(f"    prompts.yaml", True, "Valid YAML")
+            except yaml.YAMLError as e:
+                print_result(f"    prompts.yaml", False, f"Invalid YAML: {e}")
+                all_valid = False
+        else:
+            print_result(f"    prompts.yaml", False, "Not found")
+            all_valid = False
 
     return all_valid
 
@@ -184,10 +222,10 @@ def test_ollama_connection():
             return False
 
         # Test 2: Check if configured model is available
-        with open("config/ollama_config.yaml", 'r', encoding='utf-8') as f:
-            ollama_config = yaml.safe_load(f)
+        with open("config/global.yaml", 'r', encoding='utf-8') as f:
+            global_config = yaml.safe_load(f)
 
-        configured_model = ollama_config.get("model", "qwen3:14b")
+        configured_model = global_config.get("ollama", {}).get("model", "qwen3:14b")
 
         # Check both exact match and base name match
         model_available = any(
@@ -333,41 +371,70 @@ def test_youtube_api():
 
 
 def test_discord_webhook():
-    """Test Discord webhook (without sending a message)."""
-    print_header("DISCORD WEBHOOK")
-
-    webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
-
-    if not webhook_url:
-        print_result("Discord webhook", False, "DISCORD_WEBHOOK_URL not set (optional)")
-        print("    Discord notifications will be disabled.")
-        return True  # Optional feature
+    """Test Discord webhooks for all packages."""
+    print_header("DISCORD WEBHOOKS")
 
     try:
         import requests
 
-        # Validate URL format
-        if "discord.com/api/webhooks/" in webhook_url or "discordapp.com/api/webhooks/" in webhook_url:
-            print_result("Webhook URL format", True, "Valid Discord webhook URL format")
-        else:
-            print_result("Webhook URL format", False, "Invalid webhook URL format")
-            return False
+        # Discover webhooks from packages
+        packages_dir = Path("packages")
+        webhooks_found = []
 
-        # Test webhook with GET request (doesn't send message)
-        print("Validating webhook...")
-        response = requests.get(webhook_url)
+        if packages_dir.exists():
+            for package_dir in packages_dir.iterdir():
+                if package_dir.is_dir():
+                    settings_path = package_dir / "settings.yaml"
+                    if settings_path.exists():
+                        with open(settings_path, 'r', encoding='utf-8') as f:
+                            settings = yaml.safe_load(f)
 
-        if response.status_code == 200:
-            webhook_info = response.json()
-            print_result("Webhook validation", True,
-                        f"Webhook name: {webhook_info.get('name', 'Unknown')}")
-            print(f"    Channel ID: {webhook_info.get('channel_id', 'Unknown')}")
-            print(f"    Guild ID: {webhook_info.get('guild_id', 'Unknown')}")
-        else:
-            print_result("Webhook validation", False, f"HTTP {response.status_code}")
-            return False
+                        package_name = package_dir.name
 
-        return True
+                        # Check main webhook
+                        if "discord" in settings:
+                            webhook_env = settings["discord"].get("webhook_env")
+                            if webhook_env:
+                                webhooks_found.append((package_name, "main", webhook_env))
+
+                            # Check summary webhook
+                            summary = settings["discord"].get("summary", {})
+                            if summary.get("enabled"):
+                                summary_webhook_env = summary.get("webhook_env")
+                                if summary_webhook_env:
+                                    webhooks_found.append((package_name, "summary", summary_webhook_env))
+
+        if not webhooks_found:
+            print_result("Discord webhooks", False, "No webhook configurations found in packages")
+            print("    Discord notifications will be disabled.")
+            return True  # Optional feature
+
+        all_valid = True
+        for package_name, webhook_type, env_var in webhooks_found:
+            webhook_url = os.getenv(env_var)
+
+            if not webhook_url:
+                print_result(f"{package_name} ({webhook_type})", False, f"{env_var} not set")
+                continue
+
+            # Validate URL format
+            if "discord.com/api/webhooks/" not in webhook_url and "discordapp.com/api/webhooks/" not in webhook_url:
+                print_result(f"{package_name} ({webhook_type})", False, "Invalid webhook URL format")
+                all_valid = False
+                continue
+
+            # Test webhook with GET request (doesn't send message)
+            response = requests.get(webhook_url)
+
+            if response.status_code == 200:
+                webhook_info = response.json()
+                print_result(f"{package_name} ({webhook_type})", True,
+                            f"Webhook: {webhook_info.get('name', 'Unknown')}")
+            else:
+                print_result(f"{package_name} ({webhook_type})", False, f"HTTP {response.status_code}")
+                all_valid = False
+
+        return all_valid
 
     except ImportError:
         print_result("Requests library", False, "requests package not installed")

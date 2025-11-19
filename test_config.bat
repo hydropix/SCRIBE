@@ -63,7 +63,7 @@ if errorlevel 1 (
 REM Run the test script
 echo Running configuration tests...
 echo.
-python test_connections.py
+python tests/test_connections.py
 
 :end
 echo.
