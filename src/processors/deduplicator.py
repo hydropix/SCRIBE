@@ -17,32 +17,38 @@ class ContentDeduplicator:
 
     def __init__(
         self,
-        ollama_config_path: str = "config/ollama_config.yaml",
+        ollama_config: dict = None,
         use_fast_detection: bool = True,
-        similarity_threshold: float = 0.67
+        tfidf_threshold: float = 0.67,
+        simhash_threshold: float = 0.85
     ):
         """
         Initializes the deduplicator
 
         Args:
-            ollama_config_path: Path to Ollama configuration
+            ollama_config: Ollama configuration dict (model, temperature, etc.)
             use_fast_detection: Use fast similarity detection instead of LLM
-            similarity_threshold: Threshold for considering contents as duplicates (0.67 recommended - good balance between precision and recall)
+            tfidf_threshold: Threshold for TF-IDF semantic similarity (0.67 recommended)
+            simhash_threshold: Threshold for SimHash near-duplicate detection (0.85 recommended)
         """
         self.logger = logging.getLogger("SCRIBE.Deduplicator")
         self.use_fast_detection = use_fast_detection
-        self.similarity_threshold = similarity_threshold
+        self.tfidf_threshold = tfidf_threshold
+        self.simhash_threshold = simhash_threshold
 
         # Initialize fast similarity detector (primary method)
         if use_fast_detection:
             self.fast_detector = FastSimilarityDetector(
-                tfidf_threshold=similarity_threshold,
-                simhash_threshold=0.85
+                tfidf_threshold=tfidf_threshold,
+                simhash_threshold=simhash_threshold
             )
-            self.logger.info(f"Fast similarity detector initialized (threshold={similarity_threshold})")
+            self.logger.info(f"Fast similarity detector initialized (tfidf={tfidf_threshold}, simhash={simhash_threshold})")
 
         # Keep Ollama as fallback (optional)
-        self.ollama = OllamaClient(ollama_config_path)
+        if ollama_config:
+            self.ollama = OllamaClient(config=ollama_config)
+        else:
+            self.ollama = None
 
         self.logger.info("Deduplicator initialized")
 
@@ -155,7 +161,7 @@ class ContentDeduplicator:
                 existing_texts,
                 new_title,
                 existing_titles,
-                self.similarity_threshold
+                self.tfidf_threshold
             )
 
             if is_dup:
@@ -168,6 +174,9 @@ class ContentDeduplicator:
             return False
 
         # Fallback to LLM-based detection (slower)
+        if not self.ollama:
+            return False
+
         for existing in existing_contents[-check_limit:]:
             existing_text = self._get_comparison_text(existing, title_key, text_key)
 
@@ -267,6 +276,10 @@ class ContentDeduplicator:
             List of groups of similar contents
         """
         self.logger.info(f"Grouping {len(contents)} similar contents...")
+
+        if not self.ollama:
+            self.logger.warning("Ollama not configured, returning contents ungrouped")
+            return [[c] for c in contents]
 
         groups = []
         ungrouped = contents.copy()

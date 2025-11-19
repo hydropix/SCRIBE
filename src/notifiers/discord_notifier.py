@@ -21,14 +21,30 @@ class DiscordNotifier:
     # Maximum embeds per message
     MAX_EMBEDS_PER_MESSAGE = 10
 
-    def __init__(self):
-        """Initialize Discord notifier with webhook URLs from environment"""
+    def __init__(self, config: dict):
+        """
+        Initialize Discord notifier.
+
+        Args:
+            config: Discord configuration from package settings
+        """
         self.logger = logging.getLogger("SCRIBE.DiscordNotifier")
-        self.webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
-        self.summary_webhook_url = os.getenv('DISCORD_SUMMARY_WEBHOOK_URL')
+        self.config = config
+
+        # Get webhook from config env var reference
+        webhook_env = config.get('webhook_env', 'DISCORD_WEBHOOK_URL')
+        self.webhook_url = os.getenv(webhook_env)
+
+        summary_config = config.get('summary', {})
+        summary_env = summary_config.get('webhook_env', 'DISCORD_SUMMARY_WEBHOOK_URL')
+        self.summary_webhook_url = os.getenv(summary_env)
+
+        # Get additional config options
+        self.rich_embeds = config.get('rich_embeds', True)
+        self.max_length = config.get('max_length', 1900)
 
         if not self.webhook_url:
-            self.logger.warning("DISCORD_WEBHOOK_URL not set. Discord notifications disabled.")
+            self.logger.warning("Discord webhook URL not configured. Discord notifications disabled.")
         else:
             self.logger.info("Discord notifier initialized")
 
@@ -145,17 +161,10 @@ class DiscordNotifier:
 
             # Send embeds for each category
             for category, contents in by_category.items():
-                # Send category header
-                category_header = f"## {category}\n*{len(contents)} insight(s)*"
-                if not self._send_message(category_header):
-                    self.logger.warning(f"Failed to send category header for {category}")
-
-                time.sleep(self.MESSAGE_DELAY)
-
                 # Send embeds in batches (Discord allows max 10 embeds per message)
                 embeds_batch = []
                 for content in contents:
-                    embed = self._create_content_embed(content)
+                    embed = self._create_content_embed(content, category)
                     embeds_batch.append(embed)
 
                     # Send batch when full or at end
@@ -201,16 +210,20 @@ class DiscordNotifier:
 
         return header
 
-    def _create_content_embed(self, content: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_content_embed(self, content: Dict[str, Any], category: str = None) -> Dict[str, Any]:
         """
         Create a Discord embed for a content item
 
         Args:
             content: Analyzed content item with metadata
+            category: Category name to display in the embed
 
         Returns:
             Discord embed dictionary
         """
+        # Use provided category or get from content
+        display_category = category or content.get('category', 'Other')
+
         # Get display title
         display_title = content.get('translated_title', content.get('title', 'Untitled'))
 
@@ -221,6 +234,9 @@ class DiscordNotifier:
         # Build description
         description_parts = []
 
+        # Category tag at the top
+        description_parts.append(f"**📁 {display_category}**\n")
+
         # Hook (teaser)
         if content.get('hook'):
             description_parts.append(f"*{content['hook']}*\n")
@@ -229,7 +245,7 @@ class DiscordNotifier:
         if content.get('insights'):
             insights_text = content['insights']
             # Truncate if too long
-            max_insights_length = self.MAX_EMBED_DESCRIPTION - 500  # Leave room for other parts
+            max_insights_length = self.MAX_EMBED_DESCRIPTION - 600  # Leave room for other parts including category
             if len(insights_text) > max_insights_length:
                 insights_text = insights_text[:max_insights_length] + "..."
             description_parts.append(insights_text)
@@ -240,7 +256,7 @@ class DiscordNotifier:
         embed = {
             "title": display_title,
             "description": description,
-            "color": self._get_category_color(content.get('category', 'Other')),
+            "color": self._get_category_color(display_category),
             "timestamp": datetime.utcnow().isoformat()
         }
 

@@ -5,32 +5,31 @@ import logging
 import os
 from typing import Dict, Any, Optional, List
 import ollama
-from pathlib import Path
-import sys
-
-# Add parent directory to path for imports
-sys.path.append(str(Path(__file__).parent.parent.parent))
-
-from src.utils import load_config
 
 
 class OllamaClient:
-    """Client to interact with Ollama using YAML configuration"""
+    """Client to interact with Ollama using configuration from packages"""
 
-    def __init__(self, config_path: str = "config/ollama_config.yaml", language: str = "English"):
+    def __init__(
+        self,
+        config: dict,
+        prompts: dict = None,
+        language: str = "English"
+    ):
         """
         Initializes the Ollama client
 
         Args:
-            config_path: Path to the configuration file
+            config: Configuration dict (model, temperature, etc.)
+            prompts: Prompts dict with system_prompts
             language: Language for report generation (default: English)
         """
         self.logger = logging.getLogger("SCRIBE.OllamaClient")
-        self.config = load_config(config_path)
+        self.config = config
+        self.prompts = prompts.get('system_prompts', {}) if prompts else {}
 
         self.model = self.config.get('model', 'mistral')
         self.parameters = self.config.get('parameters', {})
-        self.prompts = self.config.get('prompts', {})
         self.performance = self.config.get('performance', {})
         self.language = language
 
@@ -370,9 +369,22 @@ Key insights to summarize:
 
 if __name__ == "__main__":
     # Quick test
+    from pathlib import Path
+    import sys
+    sys.path.append(str(Path(__file__).parent.parent.parent))
+
     logging.basicConfig(level=logging.INFO)
 
-    client = OllamaClient()
+    from src.package_manager import PackageManager
+
+    # Load config from package
+    pm = PackageManager()
+    pkg = pm.load_package("ai_trends")
+
+    client = OllamaClient(
+        config=pkg.get_ollama_config(),
+        prompts=pkg.prompts
+    )
 
     # Relevance analysis test
     test_content = """

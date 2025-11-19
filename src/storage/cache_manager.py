@@ -25,15 +25,17 @@ class CacheManager:
 
         return json.dumps(metadata, default=convert_datetime)
 
-    def __init__(self, db_path: str = "data/cache.db"):
+    def __init__(self, db_path: str = "data/cache.db", retention_days: int = 90):
         """
         Initializes the cache manager
 
         Args:
-            db_path: Path to the SQLite database
+            db_path: Path to the SQLite database (package-specific)
+            retention_days: Number of days to retain cached items
         """
         self.logger = logging.getLogger("SCRIBE.CacheManager")
         self.db_path = Path(db_path)
+        self.retention_days = retention_days
 
         # Create folder if necessary
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -41,7 +43,7 @@ class CacheManager:
         # Create tables
         self._init_database()
 
-        self.logger.info(f"Cache manager initialized: {self.db_path}")
+        self.logger.info(f"Cache manager initialized: {self.db_path} (retention: {retention_days} days)")
 
     def _init_database(self):
         """Creates the tables if they don't exist"""
@@ -309,13 +311,16 @@ class CacheManager:
             'reports_generated': reports_count
         }
 
-    def cleanup_old_entries(self, days_to_keep: int = 90):
+    def cleanup_old_entries(self, days_to_keep: int = None):
         """
         Cleans up old cache entries older than specified days
 
         Args:
-            days_to_keep: Number of days to keep (default: 90 days / 3 months)
+            days_to_keep: Number of days to keep (default: uses retention_days from init)
         """
+        if days_to_keep is None:
+            days_to_keep = self.retention_days
+
         cutoff_date = (datetime.now() - timedelta(days=days_to_keep)).isoformat()
 
         with sqlite3.connect(self.db_path) as conn:
@@ -330,6 +335,26 @@ class CacheManager:
             conn.commit()
 
         self.logger.info(f"Cleaned up {deleted} old cache entries")
+
+    def get_stats(self) -> Dict[str, Any]:
+        """
+        Retrieves cache statistics (alias for get_statistics for compatibility).
+
+        Returns:
+            Dictionary of statistics
+        """
+        stats = self.get_statistics()
+
+        # Add database size info
+        db_size_bytes = self.db_path.stat().st_size if self.db_path.exists() else 0
+        db_size_mb = db_size_bytes / (1024 * 1024)
+
+        return {
+            'total_items': stats.get('total_processed', 0),
+            'by_source': stats.get('by_source', {}),
+            'db_size_mb': round(db_size_mb, 2),
+            **stats
+        }
 
 
 if __name__ == "__main__":

@@ -1,0 +1,36 @@
+# config/global.yaml
+# Configuration globale partagee entre tous les packages
+
+ollama:
+  # Model to use (easily change here)
+  # Popular options: mistral, phi4, llama3, qwen2.5, qwen3:32b etc.
+  model: "qwen3:14b"
+
+  # Context size (tokens)
+  # Mistral: 32768, Phi4: 16384, Llama3: 8192
+  context_window: 32768
+
+  # Temperature (0-1) - Lower = more deterministic
+  temperature: 0.3
+
+  # Top-p sampling
+  top_p: 0.9
+
+  # Top-k sampling
+  top_k: 40
+
+  # Number of tokens to predict
+  num_predict: 2048
+
+  # Timeout per request (seconds)
+  timeout: 120
+
+  # Number of retries on error
+  max_retries: 3
+
+  # Batch processing to save VRAM
+  batch_size: 5
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

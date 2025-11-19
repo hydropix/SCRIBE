@@ -1,6 +1,11 @@
-# SCRIBE - Automated Intelligence Gathering Configuration
+# packages/ai_trends/settings.yaml
 
-# Reddit Collection
+package:
+  name: "ai_trends"
+  display_name: "AI Trends & Innovations"
+  description: "Veille sur l'intelligence artificielle et le machine learning"
+
+# === SOURCES ===
 reddit:
   subreddits:
     - artificial
@@ -39,7 +44,6 @@ reddit:
   include_comments: true
   comments_limit: 5
 
-# YouTube Collection
 youtube:
   # Search by keywords
   keywords:
@@ -57,7 +61,7 @@ youtube:
     - "@MarinaWyssAI"
     - "@LudovicSalenne"
 
-  # Number of videos per search/channel (20)
+  # Number of videos per search/channel
   videos_limit: 1
 
   # Number of days to look back
@@ -68,12 +72,12 @@ youtube:
     - fr
     - en
 
-# Filtering and Analysis
+# === ANALYSE ===
 analysis:
-  # Relevance criteria (used in LLM prompts)
-  relevance_threshold: 7  # Score out of 10
-
-  # Categories to identify
+  relevance_threshold: 7
+  # Similarity thresholds for deduplication
+  simhash_threshold: 0.85    # For near-identical content (locality-sensitive hashing)
+  tfidf_threshold: 0.67      # For semantic similarity (TF-IDF cosine, recommended: 0.67)
   categories:
     - "AGI (Artificial General Intelligence)"
     - "AI for Creative Applications"
@@ -99,50 +103,27 @@ analysis:
     - "Model Fine-tuning & Training"
     - "Prompt Engineering"
 
-  # Deduplication
-  similarity_threshold: 0.85  # Cosine similarity (0-1)
-
-# Report Generation
+# === RAPPORTS ===
 reports:
-  # Date format in file names
   date_format: "%Y-%m-%d"
-
-  # Output directory
-  output_dir: "data/reports"
-
-  # Minimum number of insights to generate a report
+  output_dir: "data/ai_trends/reports"
   min_insights: 3
-
-  # Include collection metrics
   include_metrics: true
-
-  # Report language (en, fr, es, de, etc.)
-  # This controls the language for insights extraction and executive summary
   language: "fr"
 
-# Discord Notifications
+# === NOTIFICATIONS ===
 discord:
-  # Enable/disable Discord notifications
   enabled: true
-
-  # Use rich embeds with images (recommended)
-  # If true: sends formatted embeds with Reddit images and YouTube thumbnails
-  # If false: sends plain text report (legacy mode)
   rich_embeds: true
-
-  # Send executive summary in notification
   send_executive_summary: true
-
-  # Send metrics in notification
   send_metrics: true
-
-  # Optional: Role to mention (e.g., "@everyone" or role ID)
   mention_role: ""
-
-  # Summary notification (separate webhook)
+  webhook_env: "DISCORD_AI_TRENDS_WEBHOOK"
   summary:
-    # Enable/disable summary notification
     enabled: true
-
-    # Optional: Role to mention in summary
+    webhook_env: "DISCORD_AI_TRENDS_SUMMARY_WEBHOOK"
     mention_role: ""
+
+# === CACHE ===
+cache:
+  retention_days: 90

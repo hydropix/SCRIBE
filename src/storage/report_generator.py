@@ -4,12 +4,7 @@ import logging
 from typing import List, Dict, Any
 from datetime import datetime
 from pathlib import Path
-import sys
 
-# Add parent directory to path for imports
-sys.path.append(str(Path(__file__).parent.parent.parent))
-
-from src.utils import load_config
 from src.processors.ollama_client import OllamaClient
 
 
@@ -18,20 +13,26 @@ class ReportGenerator:
 
     def __init__(
         self,
-        settings_path: str = "config/settings.yaml",
-        ollama_config_path: str = "config/ollama_config.yaml",
+        package_name: str,
+        config: dict,
+        prompts: dict = None,
+        ollama_config: dict = None,
         language: str = None
     ):
         """
         Initializes the report generator
 
         Args:
-            settings_path: Path to settings.yaml
-            ollama_config_path: Path to ollama_config.yaml
+            package_name: Name of the package (for report naming)
+            config: Configuration dict from package
+            prompts: Prompts dict from package
+            ollama_config: Ollama model configuration
             language: Language for report generation (overrides config if provided)
         """
         self.logger = logging.getLogger("SCRIBE.ReportGenerator")
-        self.config = load_config(settings_path)
+        self.config = config
+        self.prompts = prompts or {}
+        self.package_name = package_name
         self.report_config = self.config.get('reports', {})
 
         # Get language from parameter or config (default: English)
@@ -54,13 +55,14 @@ class ReportGenerator:
             language = language_map.get(language_code, 'English')
 
         # Ollama client for summaries with language support
-        self.ollama = OllamaClient(ollama_config_path, language=language)
+        self.ollama = OllamaClient(config=ollama_config, prompts=self.prompts, language=language)
         self.language = language
 
-        self.output_dir = Path(self.report_config.get('output_dir', 'data/reports'))
+        # Output directory based on package
+        self.output_dir = Path("data") / package_name / "reports"
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        self.logger.info(f"Report generator initialized (language: {language})")
+        self.logger.info(f"Report generator initialized (package: {self.package_name}, language: {language})")
 
     def generate_report(
         self,
@@ -104,8 +106,9 @@ class ReportGenerator:
             statistics
         )
 
-        # Save
-        report_path = self.output_dir / f"veille_ia_{report_date}.md"
+        # Save with package-specific filename
+        report_filename = f"{self.package_name}_report_{report_date}.md"
+        report_path = self.output_dir / report_filename
 
         with open(report_path, 'w', encoding='utf-8') as f:
             f.write(markdown)
@@ -263,11 +266,21 @@ if __name__ == "__main__":
     import sys
     sys.path.append(str(Path(__file__).parent.parent.parent))
 
-    from src.utils import setup_logging
+    from src.utils import setup_package_logging
+    from src.package_manager import PackageManager
 
-    setup_logging()
+    setup_package_logging("test")
 
-    generator = ReportGenerator()
+    # Load config from package
+    pm = PackageManager()
+    pkg = pm.load_package("ai_trends")
+
+    generator = ReportGenerator(
+        package_name=pkg.name,
+        config=pkg.settings,
+        prompts=pkg.prompts,
+        ollama_config=pkg.get_ollama_config()
+    )
 
     # Test contents
     test_contents = [

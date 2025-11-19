@@ -1,22 +1,22 @@
+#!/usr/bin/env python3
 """
 SCRIBE - Source Content Retrieval and Intelligence Bot Engine
 
-Système de veille automatisé sur l'Intelligence Artificielle.
-Point d'entrée principal du système.
+Multi-package intelligence gathering system.
 """
 
 import argparse
 import logging
+import sys
 from datetime import datetime
 from pathlib import Path
 
+from src.package_manager import PackageManager, PackageConfig
 from src.utils import (
-    setup_logging,
+    setup_package_logging,
     load_env_variables,
-    ensure_directories,
-    load_config,
-    clear_raw_logs,
-    save_raw_data_log
+    save_package_raw_data_log,
+    get_package_raw_logs_dir
 )
 from src.collectors.reddit_collector import RedditCollector
 from src.collectors.youtube_collector import YouTubeCollector
@@ -28,19 +28,29 @@ from src.notifiers.discord_notifier import DiscordNotifier
 
 
 class SCRIBE:
-    """Main orchestrator for the SCRIBE intelligence system"""
+    """Main orchestrator for SCRIBE intelligence gathering."""
 
-    def __init__(self, language: str = None):
-        """Initialize the intelligence system
+    def __init__(self, package_name: str, language: str = None):
+        """
+        Initialize SCRIBE.
 
         Args:
-            language: Language code for report generation (en, fr, es, etc.)
+            package_name: Name of the package to run
+            language: Override language for reports
         """
+        self.package_manager = PackageManager()
+        self.package_config = self.package_manager.load_package(package_name)
+        self.config = self.package_config.settings
+        self._init_package_mode(language)
 
-        # Configure logging
-        self.logger = setup_logging()
+    def _init_package_mode(self, language: str = None):
+        """Initialize components in package mode."""
+        pkg = self.package_config
+
+        # Setup package-specific logging
+        self.logger = setup_package_logging(pkg.name)
         self.logger.info("=" * 60)
-        self.logger.info("SCRIBE - Source Content Retrieval and Intelligence Bot Engine")
+        self.logger.info(f"SCRIBE - {pkg.display_name}")
         self.logger.info("=" * 60)
 
         # Load environment variables
@@ -50,19 +60,7 @@ class SCRIBE:
             self.logger.error(str(e))
             raise
 
-        # Create necessary directories
-        ensure_directories()
-
-        # Load config for options
-        self.config = load_config("config/settings.yaml")
-
-        # Get language from parameter or config
-        if language is None:
-            language = self.config.get('reports', {}).get('language', 'en')
-
-        self.language = language
-
-        # Map language codes to full names for components
+        # Determine language
         language_map = {
             'en': 'English',
             'fr': 'French',
@@ -76,35 +74,70 @@ class SCRIBE:
             'ja': 'Japanese',
             'ar': 'Arabic'
         }
-        language_full = language_map.get(language, 'English')
 
-        # Initialize components
+        if language:
+            language_full = language_map.get(language, language)
+        else:
+            lang_code = pkg.settings.get('reports', {}).get('language', 'fr')
+            language_full = language_map.get(lang_code, 'French')
+
+        self.language = language_full
         self.logger.info(f"Initializing components (language: {language_full})...")
 
-        self.reddit_collector = RedditCollector()
-        self.youtube_collector = YouTubeCollector()
-        self.analyzer = ContentAnalyzer(language=language_full)
-        self.deduplicator = ContentDeduplicator()
-        self.cache = CacheManager()
-        self.report_generator = ReportGenerator(language=language_full)
-        self.discord_notifier = DiscordNotifier()
+        # Initialize collectors with package config
+        self.reddit_collector = RedditCollector(config=pkg.settings)
+        self.youtube_collector = YouTubeCollector(config=pkg.settings)
+
+        # Initialize processors with package config
+        self.analyzer = ContentAnalyzer(
+            config=pkg.settings,
+            prompts=pkg.prompts,
+            ollama_config=pkg.get_ollama_config(),
+            language=language_full
+        )
+        self.deduplicator = ContentDeduplicator(
+            tfidf_threshold=pkg.settings.get('analysis', {}).get('tfidf_threshold', 0.67),
+            simhash_threshold=pkg.settings.get('analysis', {}).get('simhash_threshold', 0.85)
+        )
+
+        # Initialize storage with package-specific paths
+        self.cache = CacheManager(
+            db_path=str(pkg.cache_path),
+            retention_days=pkg.settings.get('cache', {}).get('retention_days', 90)
+        )
+        self.report_generator = ReportGenerator(
+            package_name=pkg.name,
+            config=pkg.settings,
+            prompts=pkg.prompts,
+            ollama_config=pkg.get_ollama_config(),
+            language=language_full
+        )
+
+        # Initialize notifier with package Discord config
+        discord_config = pkg.settings.get('discord', {})
+        self.discord_notifier = DiscordNotifier(config=discord_config)
 
         self.logger.info("All components initialized successfully")
 
     def run_veille(self):
-        """Execute a complete intelligence gathering cycle"""
+        """Execute a complete intelligence gathering cycle."""
+        pkg_name = self.package_config.name
 
         self.logger.info("\n" + "=" * 60)
         self.logger.info(f"Starting intelligence cycle at {datetime.now()}")
         self.logger.info("=" * 60 + "\n")
 
-        # 0. Cache cleanup (remove entries older than 3 months)
+        # 0. Cache cleanup (remove entries older than retention period)
         self.logger.info("STEP 0: Cleaning up old cache entries...")
-        self.cache.cleanup_old_entries(days_to_keep=90)
+        retention_days = self.config.get('cache', {}).get('retention_days', 90)
+        self.cache.cleanup_old_entries(days_to_keep=retention_days)
 
         # 0.5 Clear previous raw data logs
         self.logger.info("Clearing previous raw data logs...")
-        clear_raw_logs()
+        raw_logs_dir = get_package_raw_logs_dir(self.package_config.name)
+        if raw_logs_dir.exists():
+            for file in raw_logs_dir.glob("*.md"):
+                file.unlink()
 
         # 1. Data collection
         self.logger.info("\nSTEP 1: Collecting data from sources...")
@@ -113,12 +146,16 @@ class SCRIBE:
         youtube_videos = self._collect_youtube()
 
         # Save raw data to markdown logs
-        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if reddit_posts:
-            reddit_log_path = save_raw_data_log(reddit_posts, 'reddit', timestamp)
+            reddit_log_path = save_package_raw_data_log(
+                self.package_config.name, reddit_posts, 'reddit'
+            )
             self.logger.info(f"Raw Reddit data saved to: {reddit_log_path}")
+
         if youtube_videos:
-            youtube_log_path = save_raw_data_log(youtube_videos, 'youtube', timestamp)
+            youtube_log_path = save_package_raw_data_log(
+                self.package_config.name, youtube_videos, 'youtube'
+            )
             self.logger.info(f"Raw YouTube data saved to: {youtube_log_path}")
 
         total_collected = len(reddit_posts) + len(youtube_videos)
@@ -256,6 +293,7 @@ class SCRIBE:
         self.logger.info("\n" + "=" * 60)
         self.logger.info("INTELLIGENCE CYCLE COMPLETED")
         self.logger.info("=" * 60)
+        self.logger.info(f"Package: {pkg_name}")
         self.logger.info(f"Collected: {total_collected} items")
         self.logger.info(f"Analyzed: {len(analyzed)} items")
         self.logger.info(f"Relevant: {len(relevant)} items ({len(relevant)/len(analyzed)*100:.1f}%)")
@@ -264,8 +302,7 @@ class SCRIBE:
         self.logger.info("=" * 60 + "\n")
 
     def _collect_reddit(self):
-        """Collect Reddit posts"""
-
+        """Collect Reddit posts."""
         try:
             posts = self.reddit_collector.collect_posts()
 
@@ -282,8 +319,7 @@ class SCRIBE:
             return []
 
     def _collect_youtube(self):
-        """Collect YouTube videos"""
-
+        """Collect YouTube videos."""
         try:
             videos = self.youtube_collector.collect_videos()
 
@@ -296,8 +332,7 @@ class SCRIBE:
             return []
 
     def _prepare_contents(self, reddit_posts, youtube_videos):
-        """Prepare contents for analysis"""
-
+        """Prepare contents for analysis."""
         all_contents = []
 
         # Reddit
@@ -311,7 +346,7 @@ class SCRIBE:
                 'created_utc': post.get('created_utc'),
                 'author': post.get('author'),
                 'subreddit': post.get('subreddit'),
-                'image_url': post.get('image_url')  # Include image URL if available
+                'image_url': post.get('image_url')
             })
 
         # YouTube
@@ -324,18 +359,18 @@ class SCRIBE:
                 'url': video.get('url', ''),
                 'published_at': video.get('published_at'),
                 'channel_title': video.get('channel_title'),
-                'video_id': video['video_id']  # Include video_id for thumbnail
+                'video_id': video['video_id']
             })
 
         return all_contents
 
     def show_statistics(self):
-        """Display cache statistics"""
-
+        """Display cache statistics."""
         stats = self.cache.get_statistics()
+        pkg_name = self.package_config.display_name
 
         print("\n" + "=" * 60)
-        print("SCRIBE - STATISTICS")
+        print(f"{pkg_name} - STATISTICS")
         print("=" * 60)
         print(f"Total processed: {stats['total_processed']} items")
         print(f"Relevant: {stats['relevant_count']} ({stats['relevance_rate']:.1f}%)")
@@ -350,38 +385,90 @@ class SCRIBE:
 
 
 def main():
-    """Main entry point"""
-
+    """Main entry point."""
     parser = argparse.ArgumentParser(
         description="SCRIBE - Source Content Retrieval and Intelligence Bot Engine"
     )
 
+    # Package selection
     parser.add_argument(
-        '--mode',
+        '--package', '-p',
+        type=str,
+        help='Package name to run (e.g., ai_trends)'
+    )
+
+    parser.add_argument(
+        '--list-packages',
+        action='store_true',
+        help='List all available packages'
+    )
+
+    # Existing arguments
+    parser.add_argument(
+        '--mode', '-m',
         choices=['once', 'stats'],
         default='once',
         help='Execution mode: once (single run), stats (statistics)'
     )
 
     parser.add_argument(
-        '--language', '--lang',
+        '--language', '--lang', '-l',
         type=str,
         default=None,
-        help='Report language (en, fr, es, de, etc.). Default: from config (en)'
+        help='Report language (en, fr, es, de, etc.)'
     )
 
     args = parser.parse_args()
 
-    # Initialize the system with language parameter
-    scribe = SCRIBE(language=args.language)
+    # List packages
+    if args.list_packages:
+        pm = PackageManager()
+        packages = pm.list_packages()
 
-    if args.mode == 'stats':
-        # Display statistics
-        scribe.show_statistics()
+        if not packages:
+            print("No packages found in 'packages/' directory")
+            return
 
-    elif args.mode == 'once':
-        # Single execution
-        scribe.run_veille()
+        print("\n" + "=" * 60)
+        print("AVAILABLE PACKAGES")
+        print("=" * 60 + "\n")
+
+        for pkg_name in packages:
+            info = pm.get_package_info(pkg_name)
+            print(f"  {pkg_name}")
+            print(f"    Display name: {info['display_name']}")
+            print(f"    Description: {info['description']}")
+            print(f"    Language: {info['language']}")
+            print(f"    Sources: {info['sources']['reddit_subreddits']} subreddits, "
+                  f"{info['sources']['youtube_channels']} channels, "
+                  f"{info['sources']['youtube_keywords']} keywords")
+            print(f"    Categories: {info['categories']}")
+            print(f"    Discord: {'Enabled' if info['discord_enabled'] else 'Disabled'}")
+            print()
+        return
+
+    # Require package for normal operation
+    if not args.package:
+        print("Error: No package specified.")
+        print("Usage: python main.py --package <name>")
+        print("       python main.py --list-packages")
+        sys.exit(1)
+
+    # Initialize and run
+    try:
+        scribe = SCRIBE(package_name=args.package, language=args.language)
+
+        if args.mode == 'stats':
+            scribe.show_statistics()
+        else:
+            scribe.run_veille()
+
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logging.error(f"Error running SCRIBE: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

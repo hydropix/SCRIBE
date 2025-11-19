@@ -8,13 +8,6 @@ from datetime import datetime, timedelta
 from googleapiclient.discovery import build
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
-from pathlib import Path
-import sys
-
-# Add parent directory to path for imports
-sys.path.append(str(Path(__file__).parent.parent.parent))
-
-from src.utils import load_config
 
 
 class YouTubeCollector:
@@ -22,18 +15,18 @@ class YouTubeCollector:
 
     def __init__(
         self,
-        settings_path: str = "config/settings.yaml",
+        config: dict,
         api_key: str = None
     ):
         """
         Initializes the YouTube collector
 
         Args:
-            settings_path: Path to configuration file
+            config: Configuration dict from package settings
             api_key: YouTube API key (or from .env)
         """
         self.logger = logging.getLogger("SCRIBE.YouTubeCollector")
-        self.config = load_config(settings_path)
+        self.config = config
         self.youtube_config = self.config.get('youtube', {})
 
         # API Key from env or parameters
@@ -320,15 +313,21 @@ class YouTubeCollector:
 
 if __name__ == "__main__":
     # Quick test
+    from pathlib import Path
     import sys
     sys.path.append(str(Path(__file__).parent.parent.parent))
 
-    from src.utils import load_env_variables, setup_logging
+    from src.utils import load_env_variables, setup_package_logging
+    from src.package_manager import PackageManager
 
-    setup_logging()
+    setup_package_logging("test")
     load_env_variables()
 
-    collector = YouTubeCollector()
+    # Load config from package
+    pm = PackageManager()
+    pkg = pm.load_package("ai_trends")
+
+    collector = YouTubeCollector(config=pkg.settings)
 
     # Test with keyword
     videos = collector.collect_videos(

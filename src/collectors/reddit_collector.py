@@ -5,13 +5,6 @@ import logging
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
 import praw
-from pathlib import Path
-import sys
-
-# Add parent directory to path for imports
-sys.path.append(str(Path(__file__).parent.parent.parent))
-
-from src.utils import load_config
 
 
 class RedditCollector:
@@ -19,7 +12,7 @@ class RedditCollector:
 
     def __init__(
         self,
-        settings_path: str = "config/settings.yaml",
+        config: dict,
         client_id: str = None,
         client_secret: str = None,
         user_agent: str = None
@@ -28,13 +21,13 @@ class RedditCollector:
         Initializes the Reddit collector
 
         Args:
-            settings_path: Path to configuration file
+            config: Configuration dict from package settings
             client_id: Reddit Client ID (or from .env)
             client_secret: Reddit Client secret (or from .env)
             user_agent: User agent (or from .env)
         """
         self.logger = logging.getLogger("SCRIBE.RedditCollector")
-        self.config = load_config(settings_path)
+        self.config = config
         self.reddit_config = self.config.get('reddit', {})
 
         # Credentials from env or parameters
@@ -310,15 +303,21 @@ class RedditCollector:
 
 if __name__ == "__main__":
     # Quick test
+    from pathlib import Path
     import sys
     sys.path.append(str(Path(__file__).parent.parent.parent))
 
-    from src.utils import load_env_variables, setup_logging
+    from src.utils import load_env_variables, setup_package_logging
+    from src.package_manager import PackageManager
 
-    setup_logging()
+    setup_package_logging("test")
     load_env_variables()
 
-    collector = RedditCollector()
+    # Load config from package
+    pm = PackageManager()
+    pkg = pm.load_package("ai_trends")
+
+    collector = RedditCollector(config=pkg.settings)
 
     # Test with single subreddit
     posts = collector.collect_posts(

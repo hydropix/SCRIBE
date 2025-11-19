@@ -1,30 +1,6 @@
-# Ollama Configuration
+# packages/ai_trends/prompts.yaml
 
-# Model to use (easily change here)
-# Popular options: mistral, phi4, llama3, qwen2.5, qwen3:32b etc.
-model: "qwen3:14b"
-
-# Model parameters
-parameters:
-  # Context size (tokens)
-  # Mistral: 32768, Phi4: 16384, Llama3: 8192
-  num_ctx: 32768
-
-  # Temperature (0-1) - Lower = more deterministic
-  temperature: 0.3
-
-  # Top-p sampling
-  top_p: 0.9
-
-  # Top-k sampling
-  top_k: 40
-
-  # Number of tokens to predict
-  num_predict: 2048
-
-# System prompts
-prompts:
-  # Relevance analysis
+system_prompts:
   relevance_analyzer: |
     You are an expert in artificial intelligence tasked with evaluating the relevance of content for technology intelligence gathering.
 
@@ -49,7 +25,6 @@ prompts:
       "categorie": "main category"
     }
 
-  # Insight extraction
   insight_extractor: |
     IMPORTANT: You MUST write your ENTIRE response in {language}. Do NOT use any other language.
 
@@ -81,7 +56,6 @@ prompts:
 
     REMINDER: Write in {language}. Prioritize brevity and information density over explanation.
 
-  # Executive summary
   executive_summary: |
     CRITICAL: Write your ENTIRE response in {language}. This is mandatory.
 
@@ -97,7 +71,6 @@ prompts:
 
     FINAL REMINDER: The summary MUST be written entirely in {language}, regardless of the source content language.
 
-  # Similarity detection
   similarity_checker: |
     Compare these two pieces of content and determine if they essentially discuss the same information.
 
@@ -108,7 +81,6 @@ prompts:
 
     Then on a new line, explain in one sentence.
 
-  # Daily summary generator (for Discord summary webhook)
   daily_summary: |
     CRITICAL: Write your ENTIRE response in {language}. This is mandatory.
 
@@ -132,22 +104,11 @@ prompts:
     [2-3 sentence intro]
 
     **Key Highlights:**
-    • [Insight 1]
-    • [Insight 2]
-    • [Insight 3]
+    * [Insight 1]
+    * [Insight 2]
+    * [Insight 3]
     ...
 
     [Conclusion sentence]
 
     REMINDER: Write in {language}. Be thorough - include all insights.
-
-# Performance
-performance:
-  # Batch processing to save VRAM
-  batch_size: 5
-
-  # Timeout per request (seconds)
-  timeout: 120
-
-  # Number of retries on error
-  max_retries: 3

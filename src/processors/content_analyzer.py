@@ -2,14 +2,8 @@
 
 import logging
 from typing import Dict, Any, List
-from pathlib import Path
-import sys
-
-# Add parent directory to path for imports
-sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.processors.ollama_client import OllamaClient
-from src.utils import load_config
 
 
 class ContentAnalyzer:
@@ -17,20 +11,23 @@ class ContentAnalyzer:
 
     def __init__(
         self,
-        settings_path: str = "config/settings.yaml",
-        ollama_config_path: str = "config/ollama_config.yaml",
+        config: dict,
+        prompts: dict = None,
+        ollama_config: dict = None,
         language: str = None
     ):
         """
         Initializes the content analyzer
 
         Args:
-            settings_path: Path to settings.yaml
-            ollama_config_path: Path to ollama_config.yaml
+            config: Package settings dict
+            prompts: Package prompts dict
+            ollama_config: Ollama model configuration
             language: Language for content analysis (overrides config if provided)
         """
         self.logger = logging.getLogger("SCRIBE.ContentAnalyzer")
-        self.config = load_config(settings_path)
+        self.config = config
+        self.prompts = prompts or {}
         self.analysis_config = self.config.get('analysis', {})
 
         # Get language from parameter or config (default: English)
@@ -54,7 +51,11 @@ class ContentAnalyzer:
             language = language_map.get(language_code, 'English')
 
         # Initialize Ollama client with language support
-        self.ollama = OllamaClient(ollama_config_path, language=language)
+        self.ollama = OllamaClient(
+            config=ollama_config,
+            prompts=self.prompts if isinstance(self.prompts, dict) and 'system_prompts' in self.prompts else {'system_prompts': self.prompts},
+            language=language
+        )
 
         self.relevance_threshold = self.analysis_config.get('relevance_threshold', 7)
         self.categories = self.analysis_config.get('categories', [])
@@ -265,14 +266,24 @@ class ContentAnalyzer:
 
 if __name__ == "__main__":
     # Quick test
+    from pathlib import Path
     import sys
     sys.path.append(str(Path(__file__).parent.parent.parent))
 
-    from src.utils import setup_logging
+    from src.utils import setup_package_logging
+    from src.package_manager import PackageManager
 
-    setup_logging()
+    setup_package_logging("test")
 
-    analyzer = ContentAnalyzer()
+    # Load config from package
+    pm = PackageManager()
+    pkg = pm.load_package("ai_trends")
+
+    analyzer = ContentAnalyzer(
+        config=pkg.settings,
+        prompts=pkg.prompts,
+        ollama_config=pkg.get_ollama_config()
+    )
 
     # Analysis test
     test_contents = [
