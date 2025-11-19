@@ -32,9 +32,14 @@ prompts:
 
     Relevance criteria:
     - Novelty or originality of the information
-    - Technical or business depth
     - Potential impact on the field
-    - Source quality
+    - Community engagement (use upvotes, comments, and views as indicators of quality)
+
+    Engagement metrics context:
+    - Reddit: High upvotes and upvote ratio (>90%) indicate community validation
+    - Reddit: Many comments suggest discussion-worthy content
+    - YouTube: High view counts indicate broad interest
+    - Consider the subreddit/channel context (e.g., r/MachineLearning is more technical than r/technology)
 
     Respond ONLY in JSON format:
     {
@@ -48,37 +53,33 @@ prompts:
   insight_extractor: |
     IMPORTANT: You MUST write your ENTIRE response in {language}. Do NOT use any other language.
 
-    You are an expert AI analyst AND a skilled science communicator. Your goal is to make technical AI content accessible to non-specialists while preserving accuracy.
+    You are an expert AI analyst. Your goal is to extract the ESSENTIAL information in a compact, scannable format.
 
-    ACCESSIBILITY GUIDELINES:
-    - Use clear, simple language that a general audience can understand
-    - When using technical terms, briefly explain them in parentheses or provide analogies
-    - Avoid jargon unless absolutely necessary; if used, define it immediately
-    - Use concrete examples and real-world applications to illustrate abstract concepts
-    - Break down complex ideas into digestible pieces
-    - Explain WHY something matters, not just WHAT it is
-    - Use analogies from everyday life when possible (e.g., "like a spell-checker for code")
-
-    Analyze the following content and provide a structured JSON response.
+    CONCISION RULES:
+    - Be ultra-concise: every word must add value
+    - Use bullet points (3-5 MAX) for key facts only
+    - NO verbose explanations, NO pedagogical sections
+    - Focus on WHAT happened and WHY it matters (1 line each)
+    - Avoid redundancy and filler words
+    - Technical terms are OK if commonly known in the field
 
     Your response MUST be a valid JSON object with these fields:
-    1. "translated_title": The title translated into {language} (keep it compelling, informative, AND understandable to non-experts)
-    2. "hook": A very short teaser (1-2 sentences MAX) that makes readers want to know more. Be intriguing, concise, and accessible.
-    3. "insights": Key insights in Markdown format, written for a general audience:
-       - Main points and discoveries (explained clearly)
-       - Why this matters for everyday users or society
-       - Practical implications and real-world applications
-       - Important quotes or data (contextualized)
-       - Define any technical terms used
+    1. "translated_title": Title in {language} (clear and informative, max 10 words)
+    2. "hook": One sentence teaser (15 words MAX) that captures the essence
+    3. "insights": Ultra-compact Markdown with ONLY:
+       - 3-5 bullet points maximum with the core facts/discoveries
+       - One sentence on why this matters
+       - NO separate sections for "terms", "quotes", "applications"
+       - Total length: 100-150 words MAX
 
     Respond ONLY with valid JSON, no other text:
     {{
       "translated_title": "translated title here",
-      "hook": "short intriguing teaser here",
+      "hook": "short teaser here",
       "insights": "markdown formatted insights here"
     }}
 
-    REMINDER: ALL text in the JSON MUST be in {language}, regardless of the source content language. Make it accessible to non-specialists!
+    REMINDER: Write in {language}. Prioritize brevity and information density over explanation.
 
   # Executive summary
   executive_summary: |
@@ -87,9 +88,10 @@ prompts:
     You are an expert in information synthesis. Write an executive summary of the following insights.
 
     The summary should:
-    - Be 3-5 sentences maximum
-    - Highlight major trends
-    - Be action/decision oriented
+    - Be no longer than 3 to 5 sentences
+    - Highlight the main trends
+    - Emphasize the most useful and important information
+    - Exclude secondary information
 
     Markdown format.
 
@@ -105,6 +107,39 @@ prompts:
     - "DIFFERENT": distinct topics
 
     Then on a new line, explain in one sentence.
+
+  # Daily summary generator (for Discord summary webhook)
+  daily_summary: |
+    CRITICAL: Write your ENTIRE response in {language}. This is mandatory.
+
+    You are an AI analyst creating a comprehensive daily summary for professionals.
+
+    REQUIREMENTS:
+    - Write in {language}
+    - Start with a catchy title on first line
+    - 2-3 sentences introducing the day's highlights
+    - Use bullet points for ALL key insights (one bullet per insight)
+    - Each bullet: 1-2 lines, dense with information
+    - Group by category if many insights
+    - End with a brief conclusion sentence
+    - Use Discord markdown: **bold**, *italic*, but NO code blocks
+    - Be engaging and informative
+    - Include Only important insights
+
+    FORMAT:
+    **[Catchy Title]**
+
+    [2-3 sentence intro]
+
+    **Key Highlights:**
+    • [Insight 1]
+    • [Insight 2]
+    • [Insight 3]
+    ...
+
+    [Conclusion sentence]
+
+    REMINDER: Write in {language}. Be thorough - include all insights.
 
 # Performance
 performance:

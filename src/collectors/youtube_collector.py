@@ -2,6 +2,7 @@
 
 import os
 import logging
+import time
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from googleapiclient.discovery import build
@@ -238,12 +239,18 @@ class YouTubeCollector:
         videos: List[Dict[str, Any]],
         languages: List[str]
     ) -> List[Dict[str, Any]]:
-        """Adds transcripts to videos"""
+        """Adds transcripts to videos with rate limiting"""
 
         videos_with_transcripts = []
 
-        for video in videos:
+        for i, video in enumerate(videos):
             try:
+                # Rate limiting: wait 3 seconds between transcript requests
+                # to avoid YouTube 429 "Too Many Requests" errors
+                # Conservative delay to ensure reliability
+                if i > 0:
+                    time.sleep(3)
+
                 transcript = self._get_transcript(video['video_id'], languages)
 
                 if transcript:

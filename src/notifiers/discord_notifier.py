@@ -22,14 +22,18 @@ class DiscordNotifier:
     MAX_EMBEDS_PER_MESSAGE = 10
 
     def __init__(self):
-        """Initialize Discord notifier with webhook URL from environment"""
+        """Initialize Discord notifier with webhook URLs from environment"""
         self.logger = logging.getLogger("SCRIBE.DiscordNotifier")
         self.webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
+        self.summary_webhook_url = os.getenv('DISCORD_SUMMARY_WEBHOOK_URL')
 
         if not self.webhook_url:
             self.logger.warning("DISCORD_WEBHOOK_URL not set. Discord notifications disabled.")
         else:
             self.logger.info("Discord notifier initialized")
+
+        if self.summary_webhook_url:
+            self.logger.info("Discord summary webhook configured")
 
     def send_full_report(self, report_path: str, mention_role: str = "") -> bool:
         """
@@ -508,3 +512,64 @@ class DiscordNotifier:
             truncated = truncated[:last_newline]
 
         return truncated + truncation_notice
+
+    def send_summary(self, summary_text: str, mention_role: str = "") -> bool:
+        """
+        Send a daily summary to the summary webhook (separate channel)
+        Uses message splitting if content exceeds 2000 chars
+
+        Args:
+            summary_text: The summary text (can exceed 2000 chars, will be split)
+            mention_role: Optional role to mention (e.g., "@everyone")
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.summary_webhook_url:
+            self.logger.warning("Cannot send summary: DISCORD_SUMMARY_WEBHOOK_URL not configured")
+            return False
+
+        try:
+            # Add mention at the beginning if specified
+            content = f"{mention_role}\n\n{summary_text}" if mention_role else summary_text
+
+            # Split into chunks if necessary (same as full report)
+            message_chunks = self._split_message(content)
+
+            self.logger.info(f"Sending summary in {len(message_chunks)} message(s) to Discord")
+
+            # Send each chunk
+            for i, chunk in enumerate(message_chunks, 1):
+                payload = {"content": chunk}
+
+                response = requests.post(
+                    self.summary_webhook_url,
+                    json=payload,
+                    timeout=10
+                )
+
+                if response.status_code not in (200, 204):
+                    self.logger.error(
+                        f"Summary webhook failed on chunk {i}/{len(message_chunks)} "
+                        f"with status {response.status_code}: {response.text}"
+                    )
+                    return False
+
+                self.logger.info(f"Sent summary part {i}/{len(message_chunks)}")
+
+                # Add delay between messages to avoid rate limiting
+                if i < len(message_chunks):
+                    time.sleep(self.MESSAGE_DELAY)
+
+            self.logger.info(f"Summary sent successfully ({len(summary_text)} chars, {len(message_chunks)} part(s))")
+            return True
+
+        except requests.exceptions.Timeout:
+            self.logger.error("Summary webhook request timed out")
+            return False
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Summary webhook request failed: {e}")
+            return False
+        except Exception as e:
+            self.logger.error(f"Unexpected error sending summary: {e}")
+            return False

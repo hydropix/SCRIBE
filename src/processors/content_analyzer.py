@@ -82,8 +82,8 @@ class ContentAnalyzer:
 
         self.logger.debug(f"Analyzing: {title[:50]}...")
 
-        # 1. Relevance analysis
-        relevance = self.ollama.analyze_relevance(content, title)
+        # 1. Relevance analysis (pass metadata for context)
+        relevance = self.ollama.analyze_relevance(content, title, metadata)
 
         # Check relevance threshold
         is_relevant = (

@@ -6,27 +6,34 @@ reddit:
     - artificial
     - ArtificialInteligence
     - MachineLearning
-    - OpenAI
     - singularity
     - AGI
     - StableDiffusion
     - AIethics
     - Futurology
     - DarkFuturology
-    - DataScience
-    - computervision
-    - robotics
     - SillyTavernAI
     - ClaudeAI
     - claudexplorers
     - LocalLLaMA
     - AI_Agents
+    - Entrepreneur
+    - ChatGPT
+    - Teachers
+    - ExperiencedDevs
+    - technology
 
-  # Number of posts to fetch per subreddit 50
+  # Number of posts to fetch per subreddit
   posts_limit: 5
 
-  # Timeframe for posts (day, week, month, year, all)
+  # Sort method: hot, top, rising, new
+  sort_by: hot
+
+  # Timeframe for posts (only used when sort_by: top)
   timeframe: day
+
+  # Minimum score filter (safety net for hot/rising)
+  min_score: 5
 
   # Include top comments
   include_comments: true
@@ -37,19 +44,24 @@ youtube:
   # Search by keywords
   keywords:
     - "AI research"
+    - "LLM"
+    - "Anthropic"
+    - "Claude Code"
 
   # Specific channels to monitor (Channel IDs or usernames)
   channels:
     - "@YannicKilcher"
-    - "@AIExplained-"
-    - "@VisionIA-FR"
+    - "@aiexplained-official"
     - "@matthew_berman"
+    - "@aiDotEngineer"
+    - "@MarinaWyssAI"
+    - "@LudovicSalenne"
 
   # Number of videos per search/channel (20)
   videos_limit: 1
 
   # Number of days to look back
-  days_back: 1
+  days_back: 2
 
   # Accepted languages for transcripts
   languages:
@@ -63,13 +75,15 @@ analysis:
 
   # Categories to identify
   categories:
+    - "AGI (Artificial General Intelligence)"
+    - "AI for Creative Applications"
+    - "AI and Video Games"
     - "Large Language Models"
     - "Vibe Coding"
     - "Reinforcement Learning"
     - "AI Ethics & Safety"
     - "AI Tools & Applications"
-    - "Research Papers"
-    - "Futurology"
+    - "AI Research Papers"
     - "AI Agents & Autonomous Systems"
     - "Multimodal AI"
     - "AI Regulation & Policy"
@@ -84,7 +98,6 @@ analysis:
     - "AI Startups & Funding"
     - "Model Fine-tuning & Training"
     - "Prompt Engineering"
-    - "AI Reasoning & Chain-of-Thought"
 
   # Deduplication
   similarity_threshold: 0.85  # Cosine similarity (0-1)
@@ -125,3 +138,11 @@ discord:
 
   # Optional: Role to mention (e.g., "@everyone" or role ID)
   mention_role: ""
+
+  # Summary notification (separate webhook)
+  summary:
+    # Enable/disable summary notification
+    enabled: true
+
+    # Optional: Role to mention in summary
+    mention_role: ""

@@ -61,8 +61,10 @@ class RedditCollector:
     def collect_posts(
         self,
         subreddits: List[str] = None,
-        limit: int = None,
+        posts_limit: int = None,
+        sort_by: str = None,
         timeframe: str = None,
+        min_score: int = None,
         include_comments: bool = None,
         comments_limit: int = None
     ) -> List[Dict[str, Any]]:
@@ -71,8 +73,10 @@ class RedditCollector:
 
         Args:
             subreddits: List of subreddits (or from config)
-            limit: Number of posts per subreddit (or from config)
-            timeframe: Period (day, week, month, year, all)
+            posts_limit: Number of posts per subreddit (or from config)
+            sort_by: Sort method - hot, top, rising, new (or from config)
+            timeframe: Period for top posts (day, week, month, year, all)
+            min_score: Minimum score filter (or from config)
             include_comments: Include comments
             comments_limit: Number of comments per post
 
@@ -81,8 +85,10 @@ class RedditCollector:
         """
         # Use config values if not provided
         subreddits = subreddits or self.reddit_config.get('subreddits', [])
-        limit = limit or self.reddit_config.get('posts_limit', 50)
+        posts_limit = posts_limit or self.reddit_config.get('posts_limit', 5)
+        sort_by = sort_by or self.reddit_config.get('sort_by', 'hot')
         timeframe = timeframe or self.reddit_config.get('timeframe', 'day')
+        min_score = min_score if min_score is not None else self.reddit_config.get('min_score', 5)
         include_comments = include_comments if include_comments is not None else self.reddit_config.get('include_comments', True)
         comments_limit = comments_limit or self.reddit_config.get('comments_limit', 10)
 
@@ -90,14 +96,33 @@ class RedditCollector:
 
         for subreddit_name in subreddits:
             try:
-                self.logger.info(f"Collecting from r/{subreddit_name}...")
+                self.logger.info(f"Collecting from r/{subreddit_name} ({sort_by})...")
 
                 subreddit = self.reddit.subreddit(subreddit_name)
 
-                # Retrieve top posts for the period
-                posts = subreddit.top(time_filter=timeframe, limit=limit)
+                # Get posts based on sort method
+                if sort_by == 'hot':
+                    posts = list(subreddit.hot(limit=posts_limit * 2))  # Fetch extra for filtering
+                elif sort_by == 'top':
+                    posts = list(subreddit.top(time_filter=timeframe, limit=posts_limit * 2))
+                elif sort_by == 'rising':
+                    posts = list(subreddit.rising(limit=posts_limit * 2))
+                elif sort_by == 'new':
+                    posts = list(subreddit.new(limit=posts_limit * 2))
+                else:
+                    self.logger.warning(f"Unknown sort method '{sort_by}', using 'hot'")
+                    posts = list(subreddit.hot(limit=posts_limit * 2))
 
+                # Extract and filter posts
+                collected = 0
                 for post in posts:
+                    if collected >= posts_limit:
+                        break
+
+                    # Apply minimum score filter
+                    if post.score < min_score:
+                        continue
+
                     post_data = self._extract_post_data(post)
 
                     # Add comments if requested
@@ -105,8 +130,9 @@ class RedditCollector:
                         post_data['comments'] = self._extract_comments(post, comments_limit)
 
                     all_posts.append(post_data)
+                    collected += 1
 
-                self.logger.info(f"Collected {len([p for p in all_posts if p['subreddit'] == subreddit_name])} posts from r/{subreddit_name}")
+                self.logger.info(f"Collected {collected} posts from r/{subreddit_name}")
 
             except Exception as e:
                 self.logger.error(f"Error collecting from r/{subreddit_name}: {e}")
@@ -297,8 +323,9 @@ if __name__ == "__main__":
     # Test with single subreddit
     posts = collector.collect_posts(
         subreddits=['MachineLearning'],
-        limit=5,
-        timeframe='week',
+        posts_limit=5,
+        sort_by='hot',
+        min_score=5,
         include_comments=True,
         comments_limit=3
     )

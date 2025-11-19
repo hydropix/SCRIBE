@@ -231,7 +231,28 @@ class SCRIBE:
             except Exception as e:
                 self.logger.error(f"Discord notification failed (non-blocking): {e}")
 
-        # 8. Final summary
+        # 8. Discord summary notification (if enabled, separate webhook)
+        summary_config = discord_config.get('summary', {})
+        if summary_config.get('enabled', False) and report_result:
+            self.logger.info("\nSTEP 8: Generating and sending Discord summary...")
+            try:
+                # Generate summary using Ollama (will be split if > 2000 chars)
+                summary_text = self.analyzer.ollama.generate_daily_summary(
+                    relevant_contents=unique
+                )
+
+                # Send to summary webhook (auto-splits if needed)
+                self.discord_notifier.send_summary(
+                    summary_text=summary_text,
+                    mention_role=summary_config.get('mention_role', '')
+                )
+
+                self.logger.info(f"Summary generated: {len(summary_text)} characters")
+
+            except Exception as e:
+                self.logger.error(f"Discord summary notification failed (non-blocking): {e}")
+
+        # 9. Final summary
         self.logger.info("\n" + "=" * 60)
         self.logger.info("INTELLIGENCE CYCLE COMPLETED")
         self.logger.info("=" * 60)

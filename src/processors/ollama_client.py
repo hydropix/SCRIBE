@@ -122,20 +122,53 @@ class OllamaClient:
             self.logger.error(f"Error generating response: {e}")
             raise
 
-    def analyze_relevance(self, content: str, title: str = "") -> Dict[str, Any]:
+    def analyze_relevance(self, content: str, title: str = "", metadata: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Analyzes the relevance of content for AI monitoring
 
         Args:
             content: The content to analyze
             title: The title (optional)
+            metadata: Additional metadata (score, upvote_ratio, num_comments, etc.)
 
         Returns:
             Dictionary with relevant, score, reason, category
         """
         system_prompt = self.prompts.get('relevance_analyzer', '')
 
-        user_prompt = f"Titre: {title}\n\nContenu:\n{content[:3000]}"  # Limit to 3000 chars
+        # Build user prompt with metadata context
+        metadata = metadata or {}
+
+        # Build metadata section for context
+        metadata_lines = []
+
+        # Reddit-specific metadata
+        if metadata.get('source') == 'reddit':
+            if 'score' in metadata:
+                metadata_lines.append(f"Upvotes: {metadata['score']}")
+            if 'upvote_ratio' in metadata:
+                ratio_percent = int(metadata['upvote_ratio'] * 100)
+                metadata_lines.append(f"Upvote ratio: {ratio_percent}%")
+            if 'num_comments' in metadata:
+                metadata_lines.append(f"Comments: {metadata['num_comments']}")
+            if 'subreddit' in metadata:
+                metadata_lines.append(f"Subreddit: r/{metadata['subreddit']}")
+            if 'author' in metadata:
+                metadata_lines.append(f"Author: u/{metadata['author']}")
+
+        # YouTube-specific metadata
+        elif metadata.get('source') == 'youtube':
+            if 'channel' in metadata:
+                metadata_lines.append(f"Channel: {metadata['channel']}")
+            if 'view_count' in metadata:
+                metadata_lines.append(f"Views: {metadata['view_count']}")
+
+        # Build the prompt
+        if metadata_lines:
+            metadata_str = "\n".join(metadata_lines)
+            user_prompt = f"Titre: {title}\n\n{metadata_str}\n\nContenu:\n{content[:3000]}"
+        else:
+            user_prompt = f"Titre: {title}\n\nContenu:\n{content[:3000]}"  # Limit to 3000 chars
 
         try:
             response = self.generate(user_prompt, system_prompt)
@@ -292,6 +325,47 @@ Contenu 2:
         except Exception as e:
             self.logger.error(f"Error checking similarity: {e}")
             return 'DIFFERENT', f"Erreur: {str(e)}"
+
+    def generate_daily_summary(self, relevant_contents: List[Dict[str, Any]]) -> str:
+        """
+        Generates a daily summary for Discord (will be split if > 2000 chars)
+
+        Args:
+            relevant_contents: List of analyzed content items with insights
+
+        Returns:
+            A summary string formatted for Discord
+        """
+        system_prompt = self.prompts.get('daily_summary', '').format(
+            language=self.language
+        )
+
+        # Prepare content for summarization
+        insights_text = []
+        for i, content in enumerate(relevant_contents[:20], 1):  # Limit to 20 items
+            title = content.get('translated_title', content.get('title', 'Untitled'))
+            category = content.get('category', 'Other')
+            hook = content.get('hook', '')
+
+            # Build compact representation
+            item = f"{i}. [{category}] {title}"
+            if hook:
+                item += f" - {hook}"
+            insights_text.append(item)
+
+        user_prompt = f"""Total insights: {len(relevant_contents)}
+
+Key insights to summarize:
+{chr(10).join(insights_text)}"""
+
+        try:
+            summary = self.generate(user_prompt, system_prompt)
+            return summary
+
+        except Exception as e:
+            self.logger.error(f"Error generating daily summary: {e}")
+            # Fallback to a simple summary
+            return f"**Daily AI Summary**\n\n{len(relevant_contents)} insights gathered today across multiple AI topics.\n\nError generating detailed summary: {str(e)}"
 
 
 if __name__ == "__main__":

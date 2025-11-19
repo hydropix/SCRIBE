@@ -1,34 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(tree:*)",
-      "Bash(dir:*)",
-      "Bash(findstr:*)",
-      "Bash(python -m pip install:*)",
-      "Bash(python test_connections.py:*)",
-      "Bash(python -c:*)",
-      "Bash(python main.py:*)",
-      "Bash(timeout:*)",
-      "Bash(git init:*)",
-      "Bash(.gitignore)",
-      "Bash(touch:*)",
-      "Bash(gh auth:*)",
-      "Bash(gh repo create:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(nul)",
-      "Bash(mkdir:*)",
-      "Bash(python -m py_compile:*)",
-      "Bash(python test_discord_split.py:*)",
-      "Bash(curl:*)",
-      "Bash(schtasks /query:*)",
-      "Bash(cmd /c \"schtasks /query /tn \"\"SCRIBE - Veille IA Quotidienne\"\" /v /fo LIST\")",
-      "Bash(cmd /c schtasks /query /tn \"SCRIBE - Veille IA Quotidienne\" /v /fo LIST)",
-      "Bash(powershell -Command:*)",
-      "Bash(del \"c:\\Users\\AI_02\\Documents\\GitHub\\SCRIBE\\src\\scheduler.py\")",
-      "Bash(del \"c:\\Users\\AI_02\\Documents\\GitHub\\SCRIBE\\src\\__pycache__\\scheduler.cpython-311.pyc\" 2)",
-      "Bash(python:*)"
+      "Bash(cmd /c:*)"
     ],
     "deny": [],
     "ask": []
