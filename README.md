@@ -98,16 +98,24 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube, analy
 ollama pull qwen3:14b  # or mistral, phi4, llama3
 ```
 
-### 2. Clone and Setup
+### 2. Clone and First-Time Setup (Recommended)
 
 ```bash
 git clone https://github.com/your-repo/SCRIBE.git
 cd SCRIBE
-python -m venv venv
-venv\Scripts\activate  # Windows
-pip install -r requirements.txt
-cp .env.example .env
 ```
+
+**Windows - Simple method:**
+```bash
+# Double-click setup.bat or run:
+setup.bat
+```
+
+This will automatically:
+- Create the virtual environment
+- Install all dependencies
+- Copy `.env.example` to `.env` (if needed)
+- Run configuration tests to verify everything works
 
 ### 3. Configure Your Credentials
 
@@ -131,6 +139,24 @@ DISCORD_AI_TRENDS_SUMMARY_WEBHOOK=your_summary_webhook
 ```
 
 **Note**: Without Reddit/YouTube credentials, the app will still work but without those sources.
+
+### 4. Run the AI Trends Package
+
+```bash
+# Windows - Simple method:
+run_ai_trends.bat
+
+# Or manually:
+python main.py --package ai_trends --mode once
+```
+
+### Available Batch Files
+
+| File | Description |
+|------|-------------|
+| `setup.bat` | First-time setup: venv, dependencies, .env, and tests |
+| `run_ai_trends.bat` | Run the AI Trends package |
+| `test_config.bat` | Run configuration tests only |
 
 ---
 

@@ -47,8 +47,16 @@ if not exist ".env" (
 
 echo.
 echo ========================================
-echo Setup complete!
+echo Setup complete! Running tests...
 echo ========================================
 echo.
-echo You can now run: run_ai_trends.bat
+
+REM Run configuration tests
+python tests/test_connections.py
+
 echo.
+echo ========================================
+echo You can now run: run_ai_trends.bat
+echo ========================================
+echo.
+pause
