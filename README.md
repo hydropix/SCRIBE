@@ -29,34 +29,6 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube, analy
 
 ---
 
-## Architecture
-
-```
-SCRIBE/
-├── main.py                              # Orchestrator
-├── packages/                            # Watch packages
-│   └── ai_trends/                       # Example package
-│       ├── settings.yaml                # Sources, thresholds, categories
-│       └── prompts.yaml                 # LLM prompts
-├── config/
-│   └── global.yaml                      # Shared config (Ollama model)
-├── src/
-│   ├── package_manager.py               # Package discovery & loading
-│   ├── collectors/                      # Reddit, YouTube collectors
-│   ├── processors/                      # Ollama analysis, deduplication
-│   ├── storage/                         # Cache, report generation
-│   └── notifiers/                       # Discord webhooks
-├── data/
-│   └── <package_name>/                  # Package-specific data
-│       ├── cache.db
-│       ├── reports/
-│       └── raw_logs/
-└── logs/
-    └── <package_name>.log               # Package-specific logs
-```
-
----
-
 ## How Does It Work?
 
 ```
