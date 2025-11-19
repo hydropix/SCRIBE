@@ -1,22 +1,63 @@
 <div align="center">
   <img src="SCRIBE_Logo.png" alt="SCRIBE Logo" width="600"/>
-  
+
   ### Source Content Retrieval and Intelligence Bot Engine
 
-  *Automated AI Technology Intelligence System*
+  *Automated Multi-Topic Intelligence Gathering System*
 </div>
 
 ---
 
 ## What is SCRIBE?
 
-SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube for you, analyzes content with a local AI (Ollama), and generates daily reports on the latest artificial intelligence news.
+SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube, analyzes content with a local AI (Ollama), and generates daily reports. It uses a **package-based architecture** allowing you to monitor multiple topics independently.
 
-**In short:** You configure your sources → SCRIBE collects → AI analyzes → You receive a Markdown report (+ optional Discord notification).
+**In short:** You create a package for your topic → SCRIBE collects → AI analyzes → You receive a Markdown report (+ optional Discord notification).
 
 ---
 
-## How does it work?
+## Key Features
+
+- **Multi-package architecture** - Monitor multiple topics independently (AI, cybersecurity, gaming, etc.)
+- **Multi-source** - Reddit and YouTube with customizable sources per package
+- **Local AI** - Uses Ollama (Mistral, Phi4, Llama3, Qwen3...) - no cloud API needed
+- **Smart deduplication** - Semantic detection of similar content (TF-IDF + SimHash)
+- **Professional reports** - Structured Markdown with insights and metrics
+- **Discord notifications** - Rich embeds with images + optional daily summary
+- **SQLite cache** - Per-package isolation, avoids reprocessing
+- **Multilingual** - Reports in 11 languages (en, fr, es, de, it, pt, nl, ru, zh, ja, ar)
+
+---
+
+## Architecture
+
+```
+SCRIBE/
+├── main.py                              # Orchestrator
+├── packages/                            # Watch packages
+│   └── ai_trends/                       # Example package
+│       ├── settings.yaml                # Sources, thresholds, categories
+│       └── prompts.yaml                 # LLM prompts
+├── config/
+│   └── global.yaml                      # Shared config (Ollama model)
+├── src/
+│   ├── package_manager.py               # Package discovery & loading
+│   ├── collectors/                      # Reddit, YouTube collectors
+│   ├── processors/                      # Ollama analysis, deduplication
+│   ├── storage/                         # Cache, report generation
+│   └── notifiers/                       # Discord webhooks
+├── data/
+│   └── <package_name>/                  # Package-specific data
+│       ├── cache.db
+│       ├── reports/
+│       └── raw_logs/
+└── logs/
+    └── <package_name>.log               # Package-specific logs
+```
+
+---
+
+## How Does It Work?
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
@@ -55,28 +96,17 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube for yo
         └─────────────────┘
 ```
 
-### The 5 Steps in Detail
+### The 9-Step Pipeline
 
-1. **Collect** - Fetches Reddit posts (title + comments) and YouTube videos (with full transcript)
-2. **Filter** - Skips already processed content (SQLite database)
-3. **AI Analysis** - Ollama evaluates each piece of content:
-   - Relevance score (1-10)
-   - Category (LLM, Robotics, AI Ethics, etc.)
-   - Key points summary
-4. **Deduplicate** - Removes semantic duplicates (not just identical titles)
-5. **Report** - Generates a Markdown file organized by category with executive summary
-
----
-
-## Features
-
-- **Multi-source** : Reddit (23+ subreddits) and YouTube (channels + keywords)
-- **Local AI** : Uses Ollama (Mistral, Phi4, Llama3...) - no cloud API needed
-- **Smart deduplication** : Semantic detection of similar content
-- **Professional reports** : Structured Markdown with insights and metrics
-- **Discord notifications** : Automatic alerts with summary
-- **SQLite cache** : Avoids reprocessing the same content
-- **Multilingual** : Reports in English, French, Spanish, etc.
+1. **Cache cleanup** - 90-day retention policy
+2. **Data collection** - Reddit posts + YouTube videos with transcripts
+3. **Content preparation** - Unified format for all sources
+4. **Cache filtering** - Skip already processed content
+5. **AI Analysis** - Ollama scores relevance (1-10), categorizes, extracts insights
+6. **Relevance filtering** - Keep only score >= threshold (default: 7/10)
+7. **Deduplicate** - Semantic duplicate detection (TF-IDF + SimHash)
+8. **Report** - Generate Markdown + Discord notification with rich embeds
+9. **Summary** - Optional concise daily summary to separate Discord webhook
 
 ---
 
@@ -93,27 +123,23 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube for yo
 ```bash
 # Download from https://ollama.ai/
 # Then:
-ollama pull mistral
+ollama pull qwen3:14b  # or mistral, phi4, llama3
 ```
 
-### 2. Clone and Run
+### 2. Clone and Setup
 
 ```bash
 git clone https://github.com/your-repo/SCRIBE.git
 cd SCRIBE
-quick_start.bat   # Windows
+python -m venv venv
+venv\Scripts\activate  # Windows
+pip install -r requirements.txt
+cp .env.example .env
 ```
-
-**That's it!** The script automatically:
-- Updates the repository (`git pull`)
-- Creates the virtual environment
-- Installs all dependencies
-- Copies `.env.example` to `.env` (if needed)
-- Launches the collection
 
 ### 3. Configure Your Credentials
 
-On first run, edit the `.env` file with your API keys:
+Edit the `.env` file with your API keys:
 
 ```env
 # Reddit (https://reddit.com/prefs/apps)
@@ -127,8 +153,9 @@ YOUTUBE_API_KEY=your_key
 # Ollama
 OLLAMA_HOST=http://localhost:11434
 
-# Discord (optional)
-DISCORD_WEBHOOK_URL=your_webhook
+# Package-specific Discord webhooks
+DISCORD_AI_TRENDS_WEBHOOK=your_webhook
+DISCORD_AI_TRENDS_SUMMARY_WEBHOOK=your_summary_webhook
 ```
 
 **Note**: Without Reddit/YouTube credentials, the app will still work but without those sources.
@@ -137,173 +164,237 @@ DISCORD_WEBHOOK_URL=your_webhook
 
 ## Usage
 
-### Run a Collection
+### List Available Packages
 
 ```bash
-python main.py --mode once
+python main.py --list-packages
 ```
 
-The report will be generated in `data/reports/`.
-
-### View Statistics
+### Run a Specific Package
 
 ```bash
-python main.py --mode stats
+python main.py --package ai_trends --mode once
+```
+
+The report will be generated in `data/ai_trends/reports/`.
+
+### Run with Specific Language
+
+```bash
+python main.py --package ai_trends --mode once --lang en  # English
+python main.py --package ai_trends --mode once --lang fr  # French
+```
+
+### View Package Statistics
+
+```bash
+python main.py --package ai_trends --mode stats
 ```
 
 Shows: processed content, relevance rate, breakdown by source/category.
 
-### Change Report Language
+### Verify API Connections
 
 ```bash
-python main.py --mode once --lang en  # English
-python main.py --mode once --lang fr  # French (default)
+python tests/test_connections.py
 ```
 
 ---
 
-## Daily Scheduler (Windows)
+## Creating a New Package
 
-To run SCRIBE automatically every day, use the Windows Task Scheduler:
+SCRIBE's package system allows you to create independent monitoring configurations for any topic.
 
-### Using Task Scheduler GUI (Recommended)
+### 1. Copy an Existing Package
 
-1. Press **Win + R**, type `taskschd.msc`, press Enter
-2. Click **Create Basic Task** (right panel)
-3. **Name**: "SCRIBE Daily Report" → Next
-4. **Trigger**: Select "Daily" → Next
-5. **Time**: Set your preferred hour (e.g., 08:00) → Next
-6. **Action**: Select "Start a program" → Next
-7. **Program/script**: Browse to `C:\path\to\SCRIBE\quick_start.bat`
-8. **Start in** (Add arguments field): `C:\path\to\SCRIBE`
-9. Click **Finish**
-
-**Important**: Ensure Ollama is running when the task executes, or configure Ollama to start with Windows.
-
-### Command Line Alternative
-
-```powershell
-schtasks /create /tn "SCRIBE Daily Report" /tr "C:\path\to\SCRIBE\quick_start.bat" /sc daily /st 08:00
+```bash
+cp -r packages/ai_trends packages/cybersecurity
 ```
 
-Replace `C:\path\to\SCRIBE` with your actual installation path.
+### 2. Edit Package Settings
 
-### Manage the Task
+**`packages/cybersecurity/settings.yaml`**:
 
-```powershell
-# Verify the task
-schtasks /query /tn "SCRIBE Daily Report"
+```yaml
+package:
+  name: cybersecurity
+  display_name: "Cybersecurity Watch"
+  description: "Monitor cybersecurity news and threats"
 
-# Delete the task
-schtasks /delete /tn "SCRIBE Daily Report" /f
+reddit:
+  subreddits:
+    - netsec
+    - cybersecurity
+    - hacking
+    - ReverseEngineering
+  posts_limit: 10
+  comments_limit: 5
+  timeframe: "day"
+
+youtube:
+  keywords:
+    - "cybersecurity news"
+    - "malware analysis"
+  channels:
+    - "@JohnHammond"
+    - "@LiveOverflow"
+  videos_per_source: 5
+
+analysis:
+  relevance_threshold: 7
+  similarity_threshold: 0.85
+
+categories:
+  - Malware Analysis
+  - Vulnerability Research
+  - Threat Intelligence
+  - Network Security
+  - Incident Response
+
+reporting:
+  language: "en"
+  min_insights: 1
+
+discord:
+  webhook_env: "DISCORD_CYBERSECURITY_WEBHOOK"
+  rich_embeds: true
+  summary:
+    enabled: true
+    webhook_env: "DISCORD_CYBERSECURITY_SUMMARY_WEBHOOK"
+```
+
+### 3. Customize LLM Prompts
+
+**`packages/cybersecurity/prompts.yaml`**:
+
+Adapt the system prompts for your domain:
+- `relevance_analyzer` - How to score content relevance
+- `insight_extractor` - How to extract key insights
+- `executive_summary` - How to write the report summary
+- `daily_summary` - How to write the Discord summary
+
+### 4. Add Webhooks to .env
+
+```bash
+DISCORD_CYBERSECURITY_WEBHOOK=https://discord.com/api/webhooks/...
+DISCORD_CYBERSECURITY_SUMMARY_WEBHOOK=https://discord.com/api/webhooks/...
+```
+
+### 5. Run Your New Package
+
+```bash
+python main.py --package cybersecurity --mode once
 ```
 
 ---
 
 ## Configuration
 
-### Sources (config/settings.yaml)
+### Global Settings (config/global.yaml)
+
+Shared configuration for all packages:
 
 ```yaml
-reddit:
-  subreddits:
-    - MachineLearning
-    - LocalLLaMA
-    - OpenAI
-    # Add your subreddits...
-  posts_limit: 5
-  timeframe: "day"
-
-youtube:
-  keywords:
-    - "AI research"
-  channels:
-    - "@YannicKilcher"
-    - "@AIExplained-"
-  languages: ["en", "fr"]
+ollama:
+  model: "qwen3:14b"  # or mistral, phi4, llama3
+  parameters:
+    temperature: 0.3
+    num_ctx: 32768
 ```
 
-### AI Model (config/ollama_config.yaml)
+### Package Settings (packages/<name>/settings.yaml)
 
-```yaml
-model: "mistral"  # or phi4, llama3, qwen2.5...
-
-parameters:
-  temperature: 0.3
-  num_ctx: 32768
-```
-
-### Relevance Threshold
-
-```yaml
-analysis:
-  relevance_threshold: 7  # Keep only score >= 7/10
-```
-
-### Discord Notifications
-
-```yaml
-discord:
-  enabled: true
-  send_metrics: true
-  mention_role: "@everyone"  # or "" to disable
-```
-
-## Generated Report Example
-
-# SCRIBE - AI INTELLIGENCE REPORT
-## 2025-01-15 | 08:00
-
-AI continues to advance rapidly with major breakthroughs
-in LLM reasoning and multimodal architectures...
-
-## Large Language Models
-   3 insight(s)
-
-### 1. GPT-5 Released with Enhanced Reasoning
-**Source**: Reddit
-**Link**: https://reddit.com/r/OpenAI/...
-**Relevance**: 9/10
-**Author**: u/ai_researcher
-**Date**: 2025-01-14
-
-**Insights**: OpenAI launched GPT-5 with significant improvements
-in logical reasoning and contextual understanding...
+Each package has its own:
+- **Sources** - Subreddits, YouTube channels/keywords
+- **Thresholds** - Relevance score, similarity detection
+- **Categories** - Domain-specific classification
+- **Discord** - Separate webhooks per package
 
 ---
 
-## Robotics
-   1 insight(s)
+## Discord Notifications
 
-### 1. Tesla Optimus Gen 3 Demo
+### Main Notification (Step 8)
+
+- Rich embeds with images (Reddit posts + YouTube thumbnails)
+- Detailed insights per category
+- Configured via `discord.webhook_env` in package settings
+
+### Summary Notification (Step 9, Optional)
+
+- Concise AI-generated overview (<2000 chars)
+- Sent to separate webhook
+- Enable in package settings:
+
+```yaml
+discord:
+  summary:
+    enabled: true
+    webhook_env: "DISCORD_AI_TRENDS_SUMMARY_WEBHOOK"
+```
+
+---
+
+## Daily Scheduler (Windows)
+
+To run SCRIBE automatically every day:
+
+### Using Task Scheduler GUI
+
+1. Press **Win + R**, type `taskschd.msc`, press Enter
+2. Click **Create Basic Task**
+3. **Name**: "SCRIBE AI Trends" → Next
+4. **Trigger**: Daily at your preferred time → Next
+5. **Action**: Start a program
+6. **Program**: `python`
+7. **Arguments**: `main.py --package ai_trends --mode once`
+8. **Start in**: `C:\path\to\SCRIBE`
+
+### Command Line
+
+```powershell
+schtasks /create /tn "SCRIBE AI Trends" /tr "python main.py --package ai_trends --mode once" /sc daily /st 08:00
+```
+
+---
+
+## Generated Report Example
+
+```markdown
+# SCRIBE - CYBERSECURITY INTELLIGENCE REPORT
+## 2025-01-15 | 08:00
+
+New ransomware variants targeting critical infrastructure
+detected this week, with increased activity from APT groups...
+
+## Malware Analysis
+   3 insight(s)
+
+### 1. New Ransomware Strain Targets Healthcare
+**Source**: Reddit
+**Link**: https://reddit.com/r/netsec/...
+**Relevance**: 9/10
+**Author**: u/malware_analyst
+
+**Insights**: A new ransomware variant has been discovered
+targeting healthcare systems with sophisticated evasion...
+
+---
+
+## Threat Intelligence
+   2 insight(s)
+
+### 1. APT Group Activity Analysis
 **Source**: YouTube
 **Link**: https://youtube.com/watch?v=...
 **Relevance**: 8/10
 
-**Insights**: New demonstration of Tesla's humanoid robot...
+**Insights**: Detailed breakdown of recent APT campaign...
 
 ---
 
-*Report generated by SCRIBE - 4 total insights*
+*Report generated by SCRIBE - 5 total insights*
 ```
-
----
-
-## Analysis Categories
-
-SCRIBE automatically classifies content into 22 categories:
-
-- Large Language Models
-- AI Ethics & Safety
-- Computer Vision
-- Robotics
-- AI Agents & Autonomous Systems
-- Generative AI
-- AI Hardware & Infrastructure
-- Open Source Models
-- AI in Healthcare
-- AI Regulation & Policy
-- ... and more
 
 ---
 
@@ -313,8 +404,16 @@ SCRIBE automatically classifies content into 22 categories:
 
 ```bash
 ollama list              # View installed models
-ollama pull mistral      # Install missing model
+ollama pull qwen3:14b    # Install missing model
 ```
+
+### "Package not found"
+
+```bash
+python main.py --list-packages  # List available packages
+```
+
+Ensure your package directory exists in `packages/` with valid `settings.yaml`.
 
 ### "Reddit credentials invalid"
 
@@ -322,32 +421,48 @@ Check that your `.env` contains the correct values from https://reddit.com/prefs
 
 ### "YouTube quota exceeded"
 
-YouTube API has a free daily limit. Reduce `videos_limit` in `config/settings.yaml`.
+YouTube API has a free daily limit. Reduce `videos_per_source` in your package settings.
 
 ### Ollama too slow
 
-- Reduce `batch_size` in `config/ollama_config.yaml`
-- Or use a lighter model (phi4 vs llama3)
+- Use a lighter model (phi4 vs qwen3:14b)
+- Reduce content limits in package settings
 
 ### Not enough insights
 
 - Lower `relevance_threshold` (e.g., 5 instead of 7)
-- Increase `posts_limit` or `videos_limit`
+- Increase `posts_limit` or `videos_per_source`
 - Add more subreddits/channels
+
+---
+
+## Testing
+
+All tests are in the `tests/` directory:
+
+```bash
+python tests/test_connections.py       # Verify API connections
+python tests/test_discord_split.py     # Test Discord message splitting
+python tests/test_discord_images.py    # Test Discord image embeds
+```
 
 ---
 
 ## Logs
 
-- **Application**: `logs/scribe.log`
-- **Raw data**: `data/raw_logs/` (for debugging)
+Per-package logging:
 
-For more details:
+- **Application**: `logs/<package_name>.log`
+- **Raw data**: `data/<package_name>/raw_logs/`
 
-```python
-# In src/utils.py
-logging.basicConfig(level=logging.DEBUG)  # Instead of INFO
-```
+---
+
+## Adding New Collectors
+
+1. Create collector in `src/collectors/` following existing patterns
+2. Constructor must accept `config: dict`
+3. Return list of dicts with: `id`, `source`, `title`, `text`, `url`, `timestamp`, `metadata`
+4. Register in `main.py` SCRIBE class
 
 ---
 
@@ -357,7 +472,10 @@ logging.basicConfig(level=logging.DEBUG)  # Instead of INFO
 - [x] Local AI analysis (Ollama)
 - [x] Semantic deduplication
 - [x] Markdown reports
-- [x] Discord notifications
+- [x] Discord notifications with rich embeds
+- [x] Multi-package architecture
+- [x] Per-package Discord webhooks
+- [x] Daily summary feature
 - [ ] Emerging trend detection
 
 ---
@@ -366,6 +484,7 @@ logging.basicConfig(level=logging.DEBUG)  # Instead of INFO
 
 The project is designed to be extensible:
 
+- Add packages: `packages/<your_topic>/`
 - Add sources: `src/collectors/`
 - New processors: `src/processors/`
 - Report templates: `src/storage/report_generator.py`
@@ -379,5 +498,5 @@ MIT License - Free to use and modify
 ---
 
 <div align="center">
-  <b>SCRIBE - Your Automated AI Intelligence Assistant</b>
+  <b>SCRIBE - Your Automated Multi-Topic Intelligence Assistant</b>
 </div>
