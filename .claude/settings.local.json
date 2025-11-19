@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(cmd /c:*)"
-    ],
-    "deny": [],
-    "ask": []
-  }
-}
