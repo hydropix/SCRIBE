@@ -61,3 +61,6 @@ data/*.db
 .claude/settings.local.json
 /.claude
 /data
+
+# Private packages (keep personal configurations out of version control)
+packages/gamedev_watch/
