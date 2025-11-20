@@ -124,6 +124,17 @@ discord:
     webhook_env: "DISCORD_AI_TRENDS_SUMMARY_WEBHOOK"
     mention_role: ""
 
+synology:
+  enabled: false
+  send_executive_summary: true
+  send_metrics: true
+  mention: ""
+  webhook_env: "SYNOLOGY_AI_TRENDS_WEBHOOK"
+  summary:
+    enabled: false
+    webhook_env: "SYNOLOGY_AI_TRENDS_SUMMARY_WEBHOOK"
+    mention: ""
+
 # === CACHE ===
 cache:
   retention_days: 90

@@ -23,7 +23,7 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube, analy
 - **Local AI** - Uses Ollama (Mistral, Phi4, Llama3, Qwen3...) - no cloud API needed
 - **Smart deduplication** - Semantic detection of similar content (TF-IDF + SimHash)
 - **Professional reports** - Structured Markdown with insights and metrics
-- **Discord notifications** - Rich embeds with images + optional daily summary
+- **Multiple notification channels** - Discord (rich embeds) and Synology Chat webhooks
 - **SQLite cache** - Per-package isolation, avoids reprocessing
 - **Multilingual** - Reports in 11 languages (en, fr, es, de, it, pt, nl, ru, zh, ja, ar)
 
@@ -34,7 +34,7 @@ SCRIBE is an **automated monitoring bot** that watches Reddit and YouTube, analy
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   REDDIT    │     │   YOUTUBE   │     │   DISCORD   │
-│    subs     │     │ transcripts │     │   webhook   │
+│    subs     │     │ transcripts │     │  + SYNOLOGY │
 └──────┬──────┘     └──────┬──────┘     └──────▲──────┘
        │                   │                   │
        └─────────┬─────────┘                   │
@@ -133,9 +133,13 @@ YOUTUBE_API_KEY=your_key
 # Ollama
 OLLAMA_HOST=http://localhost:11434
 
-# Package-specific Discord webhooks
-DISCORD_AI_TRENDS_WEBHOOK=your_webhook
-DISCORD_AI_TRENDS_SUMMARY_WEBHOOK=your_summary_webhook
+# Package-specific webhooks (Discord and/or Synology Chat)
+DISCORD_AI_TRENDS_WEBHOOK=your_discord_webhook
+DISCORD_AI_TRENDS_SUMMARY_WEBHOOK=your_discord_summary_webhook
+
+# Optional: Synology Chat webhooks
+SYNOLOGY_AI_TRENDS_WEBHOOK=https://your-synology:5001/webapi/entry.cgi?api=SYNO.Chat.External&method=incoming&version=2&token=xxx
+SYNOLOGY_AI_TRENDS_SUMMARY_WEBHOOK=https://your-synology:5001/webapi/entry.cgi?api=SYNO.Chat.External&method=incoming&version=2&token=yyy
 ```
 
 **Note**: Without Reddit/YouTube credentials, the app will still work but without those sources.
@@ -254,11 +258,17 @@ reporting:
   min_insights: 1
 
 discord:
+  enabled: true
   webhook_env: "DISCORD_CYBERSECURITY_WEBHOOK"
   rich_embeds: true
   summary:
     enabled: true
     webhook_env: "DISCORD_CYBERSECURITY_SUMMARY_WEBHOOK"
+
+# Optional: Synology Chat
+synology:
+  enabled: false
+  webhook_env: "SYNOLOGY_CYBERSECURITY_WEBHOOK"
 ```
 
 ### 3. Customize LLM Prompts
@@ -310,25 +320,58 @@ Each package has its own:
 
 ---
 
-## Discord Notifications
+## Notifications
 
-### Main Notification (Step 8)
+SCRIBE supports multiple notification channels that can be enabled independently per package.
 
+### Discord Notifications
+
+**Main Notification (Step 8):**
 - Rich embeds with images (Reddit posts + YouTube thumbnails)
 - Detailed insights per category
 - Configured via `discord.webhook_env` in package settings
 
-### Summary Notification (Step 9, Optional)
-
+**Summary Notification (Step 9, Optional):**
 - Concise AI-generated overview (<2000 chars)
 - Sent to separate webhook
 - Enable in package settings:
 
 ```yaml
 discord:
+  enabled: true
+  webhook_env: "DISCORD_AI_TRENDS_WEBHOOK"
   summary:
     enabled: true
     webhook_env: "DISCORD_AI_TRENDS_SUMMARY_WEBHOOK"
+```
+
+### Synology Chat Notifications
+
+**Main Notification (Step 8b):**
+- Formatted text messages with category, insights, and metadata
+- Configured via `synology.webhook_env` in package settings
+
+**Summary Notification (Step 9b, Optional):**
+- Concise AI-generated overview (same as Discord)
+- Sent to separate webhook
+
+**Enable Synology Chat in package settings:**
+
+```yaml
+synology:
+  enabled: true
+  webhook_env: "SYNOLOGY_AI_TRENDS_WEBHOOK"
+  summary:
+    enabled: true
+    webhook_env: "SYNOLOGY_AI_TRENDS_SUMMARY_WEBHOOK"
+```
+
+**Get your Synology webhook URL:**
+Synology Chat > Integration > Incoming Webhook
+
+**Test Synology integration:**
+```bash
+python tests/test_synology.py
 ```
 
 ---
@@ -439,9 +482,10 @@ YouTube API has a free daily limit. Reduce `videos_per_source` in your package s
 All tests are in the `tests/` directory:
 
 ```bash
-python tests/test_connections.py       # Verify API connections
+python tests/test_connections.py       # Verify all API connections (Reddit, YouTube, Ollama, Discord, Synology)
 python tests/test_discord_split.py     # Test Discord message splitting
 python tests/test_discord_images.py    # Test Discord image embeds
+python tests/test_synology.py          # Test Synology Chat webhook integration
 ```
 
 ---
@@ -473,6 +517,7 @@ Per-package logging:
 - [x] Discord notifications with rich embeds
 - [x] Multi-package architecture
 - [x] Per-package Discord webhooks
+- [x] Synology Chat webhook support
 - [x] Daily summary feature
 - [ ] Emerging trend detection
 

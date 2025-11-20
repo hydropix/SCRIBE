@@ -372,14 +372,15 @@ def test_youtube_api():
 
 def test_discord_webhook():
     """Test Discord webhooks for all packages."""
-    print_header("DISCORD WEBHOOKS")
+    print_header("DISCORD & SYNOLOGY WEBHOOKS")
 
     try:
         import requests
 
         # Discover webhooks from packages
         packages_dir = Path("packages")
-        webhooks_found = []
+        discord_webhooks = []
+        synology_webhooks = []
 
         if packages_dir.exists():
             for package_dir in packages_dir.iterdir():
@@ -391,48 +392,106 @@ def test_discord_webhook():
 
                         package_name = package_dir.name
 
-                        # Check main webhook
+                        # Check Discord webhooks
                         if "discord" in settings:
                             webhook_env = settings["discord"].get("webhook_env")
                             if webhook_env:
-                                webhooks_found.append((package_name, "main", webhook_env))
+                                discord_webhooks.append((package_name, "main", webhook_env))
 
                             # Check summary webhook
                             summary = settings["discord"].get("summary", {})
                             if summary.get("enabled"):
                                 summary_webhook_env = summary.get("webhook_env")
                                 if summary_webhook_env:
-                                    webhooks_found.append((package_name, "summary", summary_webhook_env))
+                                    discord_webhooks.append((package_name, "summary", summary_webhook_env))
 
-        if not webhooks_found:
-            print_result("Discord webhooks", False, "No webhook configurations found in packages")
-            print("    Discord notifications will be disabled.")
+                        # Check Synology webhooks
+                        if "synology" in settings:
+                            webhook_env = settings["synology"].get("webhook_env")
+                            if webhook_env:
+                                synology_webhooks.append((package_name, "main", webhook_env))
+
+                            # Check summary webhook
+                            summary = settings["synology"].get("summary", {})
+                            if summary.get("enabled"):
+                                summary_webhook_env = summary.get("webhook_env")
+                                if summary_webhook_env:
+                                    synology_webhooks.append((package_name, "summary", summary_webhook_env))
+
+        if not discord_webhooks and not synology_webhooks:
+            print_result("Webhooks", False, "No webhook configurations found in packages")
+            print("    Notifications will be disabled.")
             return True  # Optional feature
 
         all_valid = True
-        for package_name, webhook_type, env_var in webhooks_found:
-            webhook_url = os.getenv(env_var)
 
-            if not webhook_url:
-                print_result(f"{package_name} ({webhook_type})", False, f"{env_var} not set")
-                continue
+        # Test Discord webhooks
+        if discord_webhooks:
+            print("\nDiscord Webhooks:")
+            for package_name, webhook_type, env_var in discord_webhooks:
+                webhook_url = os.getenv(env_var)
 
-            # Validate URL format
-            if "discord.com/api/webhooks/" not in webhook_url and "discordapp.com/api/webhooks/" not in webhook_url:
-                print_result(f"{package_name} ({webhook_type})", False, "Invalid webhook URL format")
-                all_valid = False
-                continue
+                if not webhook_url:
+                    print_result(f"  {package_name} ({webhook_type})", False, f"{env_var} not set")
+                    continue
 
-            # Test webhook with GET request (doesn't send message)
-            response = requests.get(webhook_url)
+                # Validate URL format
+                if "discord.com/api/webhooks/" not in webhook_url and "discordapp.com/api/webhooks/" not in webhook_url:
+                    print_result(f"  {package_name} ({webhook_type})", False, "Invalid webhook URL format")
+                    all_valid = False
+                    continue
 
-            if response.status_code == 200:
-                webhook_info = response.json()
-                print_result(f"{package_name} ({webhook_type})", True,
-                            f"Webhook: {webhook_info.get('name', 'Unknown')}")
-            else:
-                print_result(f"{package_name} ({webhook_type})", False, f"HTTP {response.status_code}")
-                all_valid = False
+                # Test webhook with GET request (doesn't send message)
+                response = requests.get(webhook_url)
+
+                if response.status_code == 200:
+                    webhook_info = response.json()
+                    print_result(f"  {package_name} ({webhook_type})", True,
+                                f"Webhook: {webhook_info.get('name', 'Unknown')}")
+                else:
+                    print_result(f"  {package_name} ({webhook_type})", False, f"HTTP {response.status_code}")
+                    all_valid = False
+
+        # Test Synology webhooks
+        if synology_webhooks:
+            print("\nSynology Chat Webhooks:")
+            from urllib.parse import urlencode
+
+            for package_name, webhook_type, env_var in synology_webhooks:
+                webhook_url = os.getenv(env_var)
+
+                if not webhook_url:
+                    print_result(f"  {package_name} ({webhook_type})", False, f"{env_var} not set")
+                    continue
+
+                # Validate URL format (Synology webhook format)
+                if "webapi/entry.cgi" not in webhook_url or "SYNO.Chat.External" not in webhook_url:
+                    print_result(f"  {package_name} ({webhook_type})", False, "Invalid Synology webhook URL format")
+                    all_valid = False
+                    continue
+
+                # Test webhook with a test message
+                try:
+                    test_payload = {"text": "SCRIBE connection test"}
+                    data = urlencode({"payload": str(test_payload).replace("'", '"')})
+
+                    response = requests.post(
+                        webhook_url,
+                        data=data,
+                        headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                        timeout=10
+                    )
+
+                    if response.status_code in (200, 204):
+                        print_result(f"  {package_name} ({webhook_type})", True,
+                                    f"Test message sent successfully")
+                    else:
+                        print_result(f"  {package_name} ({webhook_type})", False,
+                                   f"HTTP {response.status_code}: {response.text[:50]}")
+                        all_valid = False
+                except Exception as e:
+                    print_result(f"  {package_name} ({webhook_type})", False, f"Error: {str(e)[:50]}")
+                    all_valid = False
 
         return all_valid
 

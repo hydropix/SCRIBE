@@ -25,6 +25,7 @@ from src.processors.deduplicator import ContentDeduplicator
 from src.storage.cache_manager import CacheManager
 from src.storage.report_generator import ReportGenerator
 from src.notifiers.discord_notifier import DiscordNotifier
+from src.notifiers.synology_notifier import SynologyNotifier
 
 
 class SCRIBE:
@@ -113,9 +114,12 @@ class SCRIBE:
             language=language_full
         )
 
-        # Initialize notifier with package Discord config
+        # Initialize notifiers with package config
         discord_config = pkg.settings.get('discord', {})
         self.discord_notifier = DiscordNotifier(config=discord_config)
+
+        synology_config = pkg.settings.get('synology', {})
+        self.synology_notifier = SynologyNotifier(config=synology_config)
 
         self.logger.info("All components initialized successfully")
 
@@ -268,6 +272,19 @@ class SCRIBE:
             except Exception as e:
                 self.logger.error(f"Discord notification failed (non-blocking): {e}")
 
+        # 7b. Synology Chat notification (if enabled)
+        synology_config = self.config.get('synology', {})
+        if synology_config.get('enabled', False) and report_result:
+            self.logger.info("\nSTEP 7b: Sending Synology Chat notification...")
+            try:
+                # Synology doesn't support rich embeds, so we send formatted text
+                self.synology_notifier.send_rich_report(
+                    relevant_contents=unique,
+                    mention=synology_config.get('mention', '')
+                )
+            except Exception as e:
+                self.logger.error(f"Synology Chat notification failed (non-blocking): {e}")
+
         # 8. Discord summary notification (if enabled, separate webhook)
         summary_config = discord_config.get('summary', {})
         if summary_config.get('enabled', False) and report_result:
@@ -288,6 +305,29 @@ class SCRIBE:
 
             except Exception as e:
                 self.logger.error(f"Discord summary notification failed (non-blocking): {e}")
+
+        # 8b. Synology Chat summary notification (if enabled, separate webhook)
+        synology_summary_config = synology_config.get('summary', {})
+        if synology_summary_config.get('enabled', False) and report_result:
+            self.logger.info("\nSTEP 8b: Sending Synology Chat summary...")
+            try:
+                # Generate summary if not already generated
+                if not summary_config.get('enabled', False):
+                    summary_text = self.analyzer.ollama.generate_daily_summary(
+                        relevant_contents=unique
+                    )
+                # Reuse the summary generated for Discord
+
+                # Send to Synology summary webhook (auto-splits if needed)
+                self.synology_notifier.send_summary(
+                    summary_text=summary_text,
+                    mention=synology_summary_config.get('mention', '')
+                )
+
+                self.logger.info(f"Synology summary sent: {len(summary_text)} characters")
+
+            except Exception as e:
+                self.logger.error(f"Synology Chat summary notification failed (non-blocking): {e}")
 
         # 9. Final summary
         self.logger.info("\n" + "=" * 60)

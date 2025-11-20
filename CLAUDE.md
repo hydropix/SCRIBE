@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-SCRIBE (Source Content Retrieval and Intelligence Bot Engine) is an automated AI intelligence gathering system that monitors Reddit and YouTube for AI-related content, analyzes it with a local LLM (Ollama), and generates daily Markdown reports with optional Discord notifications.
+SCRIBE (Source Content Retrieval and Intelligence Bot Engine) is an automated AI intelligence gathering system that monitors Reddit and YouTube for AI-related content, analyzes it with a local LLM (Ollama), and generates daily Markdown reports with optional Discord and Synology Chat notifications.
 
 ## Multi-Package Architecture
 
@@ -25,7 +25,7 @@ SCRIBE/
 │   ├── collectors/                      # Reddit, YouTube collectors
 │   ├── processors/                      # Ollama analysis, deduplication
 │   ├── storage/                         # Cache, report generation
-│   └── notifiers/                       # Discord webhooks
+│   └── notifiers/                       # Discord and Synology Chat webhooks
 ├── data/
 │   └── ai_trends/                       # Package-specific data
 │       ├── cache.db
@@ -66,6 +66,9 @@ python tests/test_connections.py
 
 # Test Discord message splitting
 python tests/test_discord_split.py
+
+# Test Synology Chat integration
+python tests/test_synology.py
 ```
 
 ## Environment Setup
@@ -91,6 +94,8 @@ OLLAMA_HOST=http://localhost:11434
 # Package-specific webhooks
 DISCORD_AI_TRENDS_WEBHOOK=...
 DISCORD_AI_TRENDS_SUMMARY_WEBHOOK=...
+SYNOLOGY_AI_TRENDS_WEBHOOK=...
+SYNOLOGY_AI_TRENDS_SUMMARY_WEBHOOK=...
 ```
 
 **`config/global.yaml`** - Shared LLM settings:
@@ -179,18 +184,48 @@ Two-tiered fast approach (no heavy ML models):
 - Daily summary: Concise <2000 char summary for Discord (optional feature)
 - Prompts defined in `packages/<name>/prompts.yaml` under `system_prompts`
 
-## Discord Notifications
+## Notifications
 
-**Main Notification (Step 8):**
+### Discord Notifications
+
+**Main Notification (Step 7):**
 - Rich embeds with images (Reddit posts + YouTube thumbnails)
 - Detailed insights per category
 - Webhook configured via `webhook_env` in package settings
 
-**Summary Notification (Step 9, Optional):**
+**Summary Notification (Step 8, Optional):**
 - Concise daily summary (<2000 chars)
 - AI-generated overview of all insights
 - Separate webhook via `summary.webhook_env` in package settings
 - Enable via package settings: `discord.summary.enabled: true`
+
+### Synology Chat Notifications
+
+**Main Notification (Step 7b):**
+- Formatted text messages (Synology doesn't support rich embeds)
+- Structured content with category, insights, and metadata
+- Webhook URL format: `https://[DS_IP]:[PORT]/webapi/entry.cgi?api=SYNO.Chat.External&method=incoming&version=2&token=[TOKEN]`
+- Webhook configured via `webhook_env` in package settings
+
+**Summary Notification (Step 8b, Optional):**
+- Concise daily summary (<2000 chars)
+- AI-generated overview of all insights (same as Discord summary)
+- Separate webhook via `summary.webhook_env` in package settings
+- Enable via package settings: `synology.summary.enabled: true`
+
+**Configuration Example:**
+```yaml
+synology:
+  enabled: true
+  send_executive_summary: true
+  send_metrics: true
+  mention: ""  # Optional mention (e.g., "@all")
+  webhook_env: "SYNOLOGY_AI_TRENDS_WEBHOOK"
+  summary:
+    enabled: true
+    webhook_env: "SYNOLOGY_AI_TRENDS_SUMMARY_WEBHOOK"
+    mention: ""
+```
 
 ## Testing
 
@@ -207,5 +242,6 @@ python tests/test_discord_split.py
 # - test_connections.py - Verify API connections (Reddit, YouTube, Ollama, Discord)
 # - test_discord_split.py - Test Discord message splitting
 # - test_discord_images.py - Test Discord image embeds
+# - test_synology.py - Test Synology Chat webhook integration
 # - test_similarity_real_data.py - Test deduplication with real data
 ```
