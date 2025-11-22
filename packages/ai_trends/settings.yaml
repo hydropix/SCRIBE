@@ -119,10 +119,12 @@ discord:
   send_metrics: true
   mention_role: ""
   webhook_env: "DISCORD_AI_TRENDS_WEBHOOK"
+  # thread_name: "AI Trends Report"  # Disabled to avoid creating multiple threads
   summary:
     enabled: true
     webhook_env: "DISCORD_AI_TRENDS_SUMMARY_WEBHOOK"
     mention_role: ""
+    thread_name: "AI Daily Summary"  # Required for forum channels
 
 synology:
   enabled: false
@@ -134,6 +136,12 @@ synology:
     enabled: false
     webhook_env: "SYNOLOGY_AI_TRENDS_SUMMARY_WEBHOOK"
     mention: ""
+
+# === FALLBACK ===
+# Fallback retry mechanism for failed notifications
+fallback:
+  max_retries: 3      # Number of retry attempts
+  retry_delay: 5.0    # Delay in seconds between retries (exponential backoff applied)
 
 # === CACHE ===
 cache:

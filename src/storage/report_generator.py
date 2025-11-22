@@ -151,17 +151,12 @@ class ReportGenerator:
     ) -> str:
         """Builds the Markdown content of the report"""
 
-        # Header impactant avec date et heure
+        # Header with date integrated in title
         current_datetime = datetime.now()
         formatted_date = current_datetime.strftime('%d %B %Y')
-        formatted_time = current_datetime.strftime('%H:%M')
 
         lines = [
-            "# 📊 AI TRENDS & INNOVATIONS",
-            "",
-            "---",
-            "",
-            f"## 📅 {formatted_date} | ⏰ {formatted_time}",
+            f"# 📊 AI TRENDS & INNOVATIONS - {formatted_date}",
             "",
             "---",
             "",
@@ -207,6 +202,21 @@ class ReportGenerator:
             "",
         ]
 
+        # Add hidden metadata as HTML comment for fallback parsing
+        metadata = content.get('metadata', {})
+        hidden_meta = []
+        if metadata.get('source'):
+            hidden_meta.append(f"source={metadata['source']}")
+        if metadata.get('video_id'):
+            hidden_meta.append(f"video_id={metadata['video_id']}")
+        if metadata.get('image_url'):
+            hidden_meta.append(f"image_url={metadata['image_url']}")
+        if metadata.get('subreddit'):
+            hidden_meta.append(f"subreddit={metadata['subreddit']}")
+        if hidden_meta:
+            lines.append(f"<!-- {' | '.join(hidden_meta)} -->")
+            lines.append("")
+
         # Hook (short teaser to engage reader)
         if content.get('hook'):
             lines.extend([
@@ -222,7 +232,6 @@ class ReportGenerator:
             ])
 
         # Metadata at the end
-        metadata = content.get('metadata', {})
         metadata_parts = []
 
         # Link

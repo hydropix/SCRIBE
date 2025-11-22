@@ -69,6 +69,9 @@ python tests/test_discord_split.py
 
 # Test Synology Chat integration
 python tests/test_synology.py
+
+# Test fallback mechanism
+python tests/test_fallback.py
 ```
 
 ## Environment Setup
@@ -186,6 +189,30 @@ Two-tiered fast approach (no heavy ML models):
 
 ## Notifications
 
+### Fallback Mechanism
+
+SCRIBE includes an **intelligent fallback retry system** that handles notification failures gracefully:
+
+- **Automatic retry** - When Discord/Synology notifications fail, the system automatically retries
+- **Report-based recovery** - Uses the persisted Markdown report (no re-collection or re-analysis needed)
+- **Exponential backoff** - Retry delays: 5s, 10s, 20s (configurable)
+- **Multiple attempts** - Up to 3 retries by default
+
+**Configuration:**
+```yaml
+fallback:
+  max_retries: 3      # Number of retry attempts
+  retry_delay: 5.0    # Initial delay in seconds
+```
+
+**How it works:**
+1. Notification fails (webhook error, network issue, etc.)
+2. System parses the already-generated Markdown report
+3. Reconstructs content items from parsed data
+4. Retries sending with exponential backoff
+
+See [docs/fallback_mechanism.md](docs/fallback_mechanism.md) for complete details.
+
 ### Discord Notifications
 
 **Main Notification (Step 7):**
@@ -198,6 +225,25 @@ Two-tiered fast approach (no heavy ML models):
 - AI-generated overview of all insights
 - Separate webhook via `summary.webhook_env` in package settings
 - Enable via package settings: `discord.summary.enabled: true`
+
+**Forum Channel Support:**
+- Discord forum channels require `thread_name` parameter
+- Add `thread_name` to Discord config to enable forum support
+- Without `thread_name`, webhooks fail on forum channels
+- See [docs/discord_forum_channels.md](docs/discord_forum_channels.md) for details
+
+**Configuration Example:**
+```yaml
+discord:
+  enabled: true
+  rich_embeds: true
+  webhook_env: "DISCORD_AI_TRENDS_WEBHOOK"
+  thread_name: "AI Trends Report"  # Required for forum channels
+  summary:
+    enabled: true
+    webhook_env: "DISCORD_AI_TRENDS_SUMMARY_WEBHOOK"
+    thread_name: "AI Daily Summary"  # Required for forum channels
+```
 
 ### Synology Chat Notifications
 

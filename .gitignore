@@ -64,3 +64,6 @@ data/*.db
 
 # Private packages (keep personal configurations out of version control)
 packages/gamedev_watch/
+
+# Private batch files
+run_gamedev_watch.bat

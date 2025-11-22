@@ -26,6 +26,7 @@ from src.storage.cache_manager import CacheManager
 from src.storage.report_generator import ReportGenerator
 from src.notifiers.discord_notifier import DiscordNotifier
 from src.notifiers.synology_notifier import SynologyNotifier
+from src.notifiers.fallback_manager import FallbackManager
 
 
 class SCRIBE:
@@ -120,6 +121,14 @@ class SCRIBE:
 
         synology_config = pkg.settings.get('synology', {})
         self.synology_notifier = SynologyNotifier(config=synology_config)
+
+        # Initialize fallback manager for retry mechanism
+        fallback_config = pkg.settings.get('fallback', {})
+        self.fallback_manager = FallbackManager(
+            package_name=pkg.name,
+            max_retries=fallback_config.get('max_retries', 3),
+            retry_delay=fallback_config.get('retry_delay', 5.0)
+        )
 
         self.logger.info("All components initialized successfully")
 
@@ -253,37 +262,98 @@ class SCRIBE:
         discord_config = self.config.get('discord', {})
         if discord_config.get('enabled', False) and report_result:
             self.logger.info("\nSTEP 7: Sending Discord notification...")
+            success = False
             try:
                 # Check if rich embeds are enabled (with images)
                 use_rich_embeds = discord_config.get('rich_embeds', True)
 
                 if use_rich_embeds:
                     # Send rich embeds with images
-                    self.discord_notifier.send_rich_report(
+                    success = self.discord_notifier.send_rich_report(
                         relevant_contents=unique,
                         mention_role=discord_config.get('mention_role', '')
                     )
                 else:
                     # Send plain text report (legacy mode)
-                    self.discord_notifier.send_full_report(
+                    success = self.discord_notifier.send_full_report(
                         report_path=report_result['path'],
                         mention_role=discord_config.get('mention_role', '')
                     )
+
+                # Trigger fallback if send failed
+                if not success:
+                    self.logger.warning("Discord notification failed, attempting fallback...")
+                    send_method = 'send_rich_report' if use_rich_embeds else 'send_full_report'
+                    success = self.fallback_manager.retry_with_fallback(
+                        notifier=self.discord_notifier,
+                        send_method=send_method,
+                        report_path=report_result['path'],
+                        mention_role=discord_config.get('mention_role', '')
+                    )
+                    if success:
+                        self.logger.info("Discord notification sent successfully via fallback")
+                    else:
+                        self.logger.error("Discord notification failed even after fallback retries")
+
             except Exception as e:
-                self.logger.error(f"Discord notification failed (non-blocking): {e}")
+                self.logger.error(f"Discord notification raised exception: {e}")
+                # Try fallback on exception
+                try:
+                    self.logger.info("Attempting fallback after exception...")
+                    use_rich_embeds = discord_config.get('rich_embeds', True)
+                    send_method = 'send_rich_report' if use_rich_embeds else 'send_full_report'
+                    success = self.fallback_manager.retry_with_fallback(
+                        notifier=self.discord_notifier,
+                        send_method=send_method,
+                        report_path=report_result['path'],
+                        mention_role=discord_config.get('mention_role', '')
+                    )
+                    if success:
+                        self.logger.info("Discord notification sent successfully via fallback after exception")
+                except Exception as fallback_error:
+                    self.logger.error(f"Fallback also failed: {fallback_error}")
 
         # 7b. Synology Chat notification (if enabled)
         synology_config = self.config.get('synology', {})
         if synology_config.get('enabled', False) and report_result:
             self.logger.info("\nSTEP 7b: Sending Synology Chat notification...")
+            success = False
             try:
                 # Synology doesn't support rich embeds, so we send formatted text
-                self.synology_notifier.send_rich_report(
+                success = self.synology_notifier.send_rich_report(
                     relevant_contents=unique,
                     mention=synology_config.get('mention', '')
                 )
+
+                # Trigger fallback if send failed
+                if not success:
+                    self.logger.warning("Synology Chat notification failed, attempting fallback...")
+                    success = self.fallback_manager.retry_with_fallback(
+                        notifier=self.synology_notifier,
+                        send_method='send_rich_report',
+                        report_path=report_result['path'],
+                        mention=synology_config.get('mention', '')
+                    )
+                    if success:
+                        self.logger.info("Synology Chat notification sent successfully via fallback")
+                    else:
+                        self.logger.error("Synology Chat notification failed even after fallback retries")
+
             except Exception as e:
-                self.logger.error(f"Synology Chat notification failed (non-blocking): {e}")
+                self.logger.error(f"Synology Chat notification raised exception: {e}")
+                # Try fallback on exception
+                try:
+                    self.logger.info("Attempting fallback after exception...")
+                    success = self.fallback_manager.retry_with_fallback(
+                        notifier=self.synology_notifier,
+                        send_method='send_rich_report',
+                        report_path=report_result['path'],
+                        mention=synology_config.get('mention', '')
+                    )
+                    if success:
+                        self.logger.info("Synology Chat notification sent successfully via fallback after exception")
+                except Exception as fallback_error:
+                    self.logger.error(f"Fallback also failed: {fallback_error}")
 
         # 8. Discord summary notification (if enabled, separate webhook)
         summary_config = discord_config.get('summary', {})

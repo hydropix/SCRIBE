@@ -1,0 +1,100 @@
+# Example Discord configuration with forum channel support
+# Copy this section to your packages/<package_name>/settings.yaml
+
+# === NOTIFICATIONS ===
+
+# Option 1: Discord TEXT CHANNEL (regular channel)
+discord:
+  enabled: true
+  rich_embeds: true
+  send_executive_summary: true
+  send_metrics: true
+  mention_role: ""  # Optional: "@everyone" or role ID
+  webhook_env: "DISCORD_AI_TRENDS_WEBHOOK"
+
+  # NO thread_name needed for text channels
+
+  summary:
+    enabled: true
+    webhook_env: "DISCORD_AI_TRENDS_SUMMARY_WEBHOOK"
+    mention_role: ""
+
+
+# Option 2: Discord FORUM CHANNEL
+discord:
+  enabled: true
+  rich_embeds: true
+  send_executive_summary: true
+  send_metrics: true
+  mention_role: ""  # Optional: "@everyone" or role ID
+  webhook_env: "DISCORD_AI_TRENDS_WEBHOOK"
+
+  # REQUIRED for forum channels: specify thread name
+  thread_name: "🤖 AI Trends Report"
+
+  summary:
+    enabled: true
+    webhook_env: "DISCORD_AI_TRENDS_SUMMARY_WEBHOOK"
+    mention_role: ""
+
+    # Separate thread for summaries
+    thread_name: "📊 Daily AI Summary"
+
+
+# Option 3: Dynamic thread names (with date)
+# Note: The thread_name from YAML is static. For dynamic names,
+# you can include date placeholders in your custom code or use
+# a descriptive name like:
+
+discord:
+  enabled: true
+  rich_embeds: true
+  webhook_env: "DISCORD_AI_TRENDS_WEBHOOK"
+
+  # Dynamic-style names (static in config, but descriptive)
+  thread_name: "AI Trends - Latest Report"
+
+  summary:
+    enabled: true
+    webhook_env: "DISCORD_AI_TRENDS_SUMMARY_WEBHOOK"
+    thread_name: "AI Summary - Latest"
+
+
+# === ENVIRONMENT VARIABLES ===
+# Add these to your .env file:
+
+# For TEXT channels:
+DISCORD_AI_TRENDS_WEBHOOK=https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_TOKEN
+DISCORD_AI_TRENDS_SUMMARY_WEBHOOK=https://discord.com/api/webhooks/YOUR_SUMMARY_WEBHOOK_ID/YOUR_TOKEN
+
+# For FORUM channels (same format, just created from a forum channel):
+DISCORD_AI_TRENDS_WEBHOOK=https://discord.com/api/webhooks/YOUR_FORUM_WEBHOOK_ID/YOUR_TOKEN
+DISCORD_AI_TRENDS_SUMMARY_WEBHOOK=https://discord.com/api/webhooks/YOUR_FORUM_SUMMARY_WEBHOOK_ID/YOUR_TOKEN
+
+
+# === CREATING WEBHOOKS ===
+
+# Text Channel Webhook:
+# 1. Right-click on text channel
+# 2. Edit Channel → Integrations → Webhooks
+# 3. Create Webhook
+# 4. Copy URL and add to .env
+
+# Forum Channel Webhook:
+# 1. Right-click on forum channel
+# 2. Edit Channel → Integrations → Webhooks
+# 3. Create Webhook
+# 4. Copy URL and add to .env
+# 5. IMPORTANT: Add thread_name to your discord config in settings.yaml
+
+
+# === TROUBLESHOOTING ===
+
+# Error: "Webhooks posted to forum channels must have a thread_name or thread_id"
+# Solution: Add thread_name to your discord configuration
+
+# Messages work in text channels but not forum channels
+# Solution: Forum channels require thread_name parameter
+
+# Want to test?
+# Run: python tests/test_discord_forum_demo.py
