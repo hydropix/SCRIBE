@@ -45,7 +45,7 @@ def test_synology_connection():
     }
 
     try:
-        notifier = SynologyNotifier(config=config)
+        notifier = SynologyNotifier(config=config, package_display_name="Test Package")
         print("   ✓ Notifier initialized")
     except Exception as e:
         print(f"   ✗ Failed to initialize notifier: {e}")
@@ -145,7 +145,7 @@ def test_synology_summary():
     }
 
     try:
-        notifier = SynologyNotifier(config=config)
+        notifier = SynologyNotifier(config=config, package_display_name="Test Package")
         print("   ✓ Notifier initialized with summary webhook")
     except Exception as e:
         print(f"   ✗ Failed to initialize notifier: {e}")

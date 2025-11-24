@@ -89,11 +89,10 @@ system_prompts:
     REQUIREMENTS:
     - Write in {language}
     - Start with a catchy title on first line
-    - 2-3 sentences introducing the day's highlights
+    - Don't use exaggerated terms such as "revolutionary"
     - Use bullet points for ALL key insights (one bullet per insight)
     - Each bullet: 1-2 lines, dense with information
     - Group by category if many insights
-    - End with a brief conclusion sentence
     - Use Discord markdown: **bold**, *italic*, but NO code blocks
     - Be engaging and informative
     - Include Only important insights
@@ -101,14 +100,10 @@ system_prompts:
     FORMAT:
     **[Catchy Title]**
 
-    [2-3 sentence intro]
-
     **Key Highlights:**
     * [Insight 1]
     * [Insight 2]
     * [Insight 3]
     ...
-
-    [Conclusion sentence]
 
     REMINDER: Write in {language}. Be thorough - include all insights.

@@ -21,15 +21,17 @@ class DiscordNotifier:
     # Maximum embeds per message
     MAX_EMBEDS_PER_MESSAGE = 10
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, package_display_name: str = "AI Trends & Innovations"):
         """
         Initialize Discord notifier.
 
         Args:
             config: Discord configuration from package settings
+            package_display_name: Display name of the package for report header
         """
         self.logger = logging.getLogger("SCRIBE.DiscordNotifier")
         self.config = config
+        self.package_display_name = package_display_name
 
         # Get webhook from config env var reference
         webhook_env = config.get('webhook_env', 'DISCORD_WEBHOOK_URL')
@@ -212,7 +214,7 @@ class DiscordNotifier:
         formatted_date = current_datetime.strftime('%d %B %Y')
         formatted_time = current_datetime.strftime('%H:%M')
 
-        header = f"# AI TRENDS & INNOVATIONS\n\n---\n\n## {formatted_date} | {formatted_time}\n\n---"
+        header = f"# {self.package_display_name.upper()}\n\n---\n\n## {formatted_date} | {formatted_time}\n\n---"
 
         if mention_role:
             header = f"{mention_role}\n\n{header}"

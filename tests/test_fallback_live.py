@@ -113,7 +113,10 @@ def test_synology_fallback():
 
     # Initialize Synology notifier
     synology_config = pkg.settings.get('synology', {})
-    synology_notifier = SynologyNotifier(config=synology_config)
+    synology_notifier = SynologyNotifier(
+        config=synology_config,
+        package_display_name=pkg.display_name
+    )
 
     if not synology_notifier.webhook_url:
         print("⚠️  Synology webhook not configured, skipping Synology test")

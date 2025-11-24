@@ -436,10 +436,16 @@ def main():
 
     # Initialize notifiers
     discord_config = pkg.settings.get('discord', {})
-    discord_notifier = DiscordNotifier(config=discord_config)
+    discord_notifier = DiscordNotifier(
+        config=discord_config,
+        package_display_name=pkg.display_name
+    )
 
     synology_config = pkg.settings.get('synology', {})
-    synology_notifier = SynologyNotifier(config=synology_config)
+    synology_notifier = SynologyNotifier(
+        config=synology_config,
+        package_display_name=pkg.display_name
+    )
 
     # Send to Discord
     discord_success = None

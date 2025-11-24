@@ -112,15 +112,22 @@ class SCRIBE:
             config=pkg.settings,
             prompts=pkg.prompts,
             ollama_config=pkg.get_ollama_config(),
-            language=language_full
+            language=language_full,
+            package_display_name=pkg.display_name
         )
 
         # Initialize notifiers with package config
         discord_config = pkg.settings.get('discord', {})
-        self.discord_notifier = DiscordNotifier(config=discord_config)
+        self.discord_notifier = DiscordNotifier(
+            config=discord_config,
+            package_display_name=pkg.display_name
+        )
 
         synology_config = pkg.settings.get('synology', {})
-        self.synology_notifier = SynologyNotifier(config=synology_config)
+        self.synology_notifier = SynologyNotifier(
+            config=synology_config,
+            package_display_name=pkg.display_name
+        )
 
         # Initialize fallback manager for retry mechanism
         fallback_config = pkg.settings.get('fallback', {})

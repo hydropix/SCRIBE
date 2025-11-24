@@ -124,7 +124,7 @@ discord:
     enabled: true
     webhook_env: "DISCORD_AI_TRENDS_SUMMARY_WEBHOOK"
     mention_role: ""
-    thread_name: "AI Daily Summary"  # Required for forum channels
+    # thread_name: "AI Daily Summary"  # Required for forum channels (disabled for text channels)
 
 synology:
   enabled: false

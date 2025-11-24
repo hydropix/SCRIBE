@@ -18,15 +18,17 @@ class SynologyNotifier:
     # Delay between messages to avoid rate limiting (in seconds)
     MESSAGE_DELAY = 1.0
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, package_display_name: str = "AI Trends & Innovations"):
         """
         Initialize Synology Chat notifier.
 
         Args:
             config: Synology Chat configuration from package settings
+            package_display_name: Display name of the package for report header
         """
         self.logger = logging.getLogger("SCRIBE.SynologyNotifier")
         self.config = config
+        self.package_display_name = package_display_name
 
         # Get webhook URL from config env var reference
         webhook_env = config.get('webhook_env', 'SYNOLOGY_WEBHOOK_URL')
@@ -173,7 +175,7 @@ class SynologyNotifier:
         formatted_date = current_datetime.strftime('%d %B %Y')
         formatted_time = current_datetime.strftime('%H:%M')
 
-        header = f"# AI TRENDS & INNOVATIONS\n\n---\n\n## {formatted_date} | {formatted_time}\n\n---"
+        header = f"# {self.package_display_name.upper()}\n\n---\n\n## {formatted_date} | {formatted_time}\n\n---"
 
         if mention:
             header = f"{mention}\n\n{header}"

@@ -17,7 +17,8 @@ class ReportGenerator:
         config: dict,
         prompts: dict = None,
         ollama_config: dict = None,
-        language: str = None
+        language: str = None,
+        package_display_name: str = None
     ):
         """
         Initializes the report generator
@@ -28,11 +29,13 @@ class ReportGenerator:
             prompts: Prompts dict from package
             ollama_config: Ollama model configuration
             language: Language for report generation (overrides config if provided)
+            package_display_name: Display name of the package for report header
         """
         self.logger = logging.getLogger("SCRIBE.ReportGenerator")
         self.config = config
         self.prompts = prompts or {}
         self.package_name = package_name
+        self.package_display_name = package_display_name or package_name.replace('_', ' ').title()
         self.report_config = self.config.get('reports', {})
 
         # Get language from parameter or config (default: English)
@@ -156,7 +159,7 @@ class ReportGenerator:
         formatted_date = current_datetime.strftime('%d %B %Y')
 
         lines = [
-            f"# 📊 AI TRENDS & INNOVATIONS - {formatted_date}",
+            f"# 📊 {self.package_display_name.upper()} - {formatted_date}",
             "",
             "---",
             "",

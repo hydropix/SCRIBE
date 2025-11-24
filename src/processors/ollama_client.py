@@ -3,8 +3,10 @@
 import json
 import logging
 import os
+import re
 from typing import Dict, Any, Optional, List
 import ollama
+from difflib import SequenceMatcher
 
 
 class OllamaClient:
@@ -325,6 +327,62 @@ Contenu 2:
             self.logger.error(f"Error checking similarity: {e}")
             return 'DIFFERENT', f"Erreur: {str(e)}"
 
+    def _inject_links_in_summary(self, summary: str, relevant_contents: List[Dict[str, Any]]) -> str:
+        """
+        Injects source links into bold text in the summary by matching with content titles
+
+        Args:
+            summary: The generated summary text with bold markdown
+            relevant_contents: List of content items with titles and URLs
+
+        Returns:
+            Summary with bold text converted to linked bold text
+        """
+        # Find all bold text patterns: **text**
+        bold_pattern = re.compile(r'\*\*([^\*]+?)\*\*')
+        bold_matches = bold_pattern.findall(summary)
+
+        if not bold_matches:
+            return summary
+
+        # Build a mapping of titles to URLs
+        title_url_map = {}
+        for content in relevant_contents:
+            title = content.get('translated_title', content.get('title', ''))
+            url = content.get('url', '')
+            if title and url:
+                title_url_map[title.lower()] = url
+
+        # Process each bold text and try to match with a title
+        result = summary
+        for bold_text in bold_matches:
+            best_match = None
+            best_ratio = 0.0
+            bold_lower = bold_text.lower()
+
+            # Try to find the best matching title
+            for title, url in title_url_map.items():
+                # Use fuzzy matching to handle variations
+                ratio = SequenceMatcher(None, bold_lower, title).ratio()
+
+                # Also check if bold text is contained in title or vice versa
+                if bold_lower in title or title in bold_lower:
+                    ratio = max(ratio, 0.85)  # Boost ratio for substring matches
+
+                if ratio > best_ratio and ratio > 0.6:  # Threshold of 60% similarity
+                    best_ratio = ratio
+                    best_match = url
+
+            # If we found a good match, replace bold with linked bold
+            if best_match:
+                old_pattern = f'**{bold_text}**'
+                new_pattern = f'[**{bold_text}**]({best_match})'
+                # Only replace the first occurrence to avoid issues
+                result = result.replace(old_pattern, new_pattern, 1)
+                self.logger.debug(f"Linked '{bold_text}' to {best_match} (similarity: {best_ratio:.2f})")
+
+        return result
+
     def generate_daily_summary(self, relevant_contents: List[Dict[str, Any]]) -> str:
         """
         Generates a daily summary for Discord (will be split if > 2000 chars)
@@ -359,7 +417,11 @@ Key insights to summarize:
 
         try:
             summary = self.generate(user_prompt, system_prompt)
-            return summary
+
+            # Inject links into bold text in the summary
+            summary_with_links = self._inject_links_in_summary(summary, relevant_contents)
+
+            return summary_with_links
 
         except Exception as e:
             self.logger.error(f"Error generating daily summary: {e}")
