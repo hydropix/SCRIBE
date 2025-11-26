@@ -41,6 +41,9 @@ class YouTubeCollector:
         # Initialize YouTube API client
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
 
+        # Initialize transcript API (v1.x uses instance methods)
+        self.transcript_api = YouTubeTranscriptApi()
+
         self.logger.info("YouTube collector initialized")
 
     def collect_videos(
@@ -271,13 +274,14 @@ class YouTubeCollector:
 
         try:
             # Try to retrieve transcript in requested languages
-            transcript_list = YouTubeTranscriptApi.get_transcript(
+            # Using youtube-transcript-api v1.x instance API
+            transcript = self.transcript_api.fetch(
                 video_id,
                 languages=languages
             )
 
-            # Concatenate text
-            transcript_text = " ".join([entry['text'] for entry in transcript_list])
+            # Concatenate text (v1.x uses .text attribute instead of dict)
+            transcript_text = " ".join([entry.text for entry in transcript])
 
             return transcript_text
 
