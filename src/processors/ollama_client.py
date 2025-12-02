@@ -184,15 +184,23 @@ class OllamaClient:
 
             result = json.loads(response)
 
-            # Validate structure
-            required_keys = ['pertinent', 'score', 'raison', 'categorie']
+            # Validate structure (support both English and legacy French keys)
+            # Map legacy French keys to English if needed
+            if 'pertinent' in result and 'relevant' not in result:
+                result['relevant'] = result.pop('pertinent')
+            if 'raison' in result and 'reason' not in result:
+                result['reason'] = result.pop('raison')
+            if 'categorie' in result and 'category' not in result:
+                result['category'] = result.pop('categorie')
+
+            required_keys = ['relevant', 'score', 'reason', 'category']
             if not all(key in result for key in required_keys):
                 self.logger.warning(f"Incomplete response structure: {result}")
                 return {
-                    'pertinent': False,
+                    'relevant': False,
                     'score': 0,
-                    'raison': 'Erreur de parsing',
-                    'categorie': 'Unknown'
+                    'reason': 'Parsing error',
+                    'category': 'Unknown'
                 }
 
             return result
@@ -200,18 +208,18 @@ class OllamaClient:
         except json.JSONDecodeError as e:
             self.logger.error(f"Error parsing JSON response: {e}\nResponse: {response}")
             return {
-                'pertinent': False,
+                'relevant': False,
                 'score': 0,
-                'raison': f'Erreur JSON: {str(e)}',
-                'categorie': 'Unknown'
+                'reason': f'JSON error: {str(e)}',
+                'category': 'Unknown'
             }
         except Exception as e:
             self.logger.error(f"Error analyzing relevance: {e}")
             return {
-                'pertinent': False,
+                'relevant': False,
                 'score': 0,
-                'raison': f'Erreur: {str(e)}',
-                'categorie': 'Unknown'
+                'reason': f'Error: {str(e)}',
+                'category': 'Unknown'
             }
 
     def extract_insights(self, content: str, title: str = "") -> Dict[str, Any]:
@@ -397,22 +405,23 @@ Contenu 2:
             language=self.language
         )
 
-        # Prepare content for summarization
+        # Prepare content for summarization (already sorted by score descending)
         insights_text = []
         for i, content in enumerate(relevant_contents[:20], 1):  # Limit to 20 items
             title = content.get('translated_title', content.get('title', 'Untitled'))
             category = content.get('category', 'Other')
             hook = content.get('hook', '')
+            score = content.get('relevance_score', 0)
 
-            # Build compact representation
-            item = f"{i}. [{category}] {title}"
+            # Build compact representation with score
+            item = f"{i}. [Score: {score}] [{category}] {title}"
             if hook:
                 item += f" - {hook}"
             insights_text.append(item)
 
         user_prompt = f"""Total insights: {len(relevant_contents)}
 
-Key insights to summarize:
+Key insights to summarize (sorted by relevance score, #1 is the TOP NEWS):
 {chr(10).join(insights_text)}"""
 
         try:

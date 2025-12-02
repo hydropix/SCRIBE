@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from googleapiclient.discovery import build
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
+from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound, TooManyRequests, YouTubeRequestFailed
 
 
 class YouTubeCollector:
@@ -43,6 +43,9 @@ class YouTubeCollector:
 
         # Initialize transcript API (v1.x uses instance methods)
         self.transcript_api = YouTubeTranscriptApi()
+
+        # Transcript error tracking for debug reporting
+        self.transcript_errors = []
 
         self.logger.info("YouTube collector initialized")
 
@@ -238,30 +241,48 @@ class YouTubeCollector:
         """Adds transcripts to videos with rate limiting"""
 
         videos_with_transcripts = []
+        # Reset error tracking for this collection run
+        self.transcript_errors = []
 
         for i, video in enumerate(videos):
             try:
-                # Rate limiting: wait 3 seconds between transcript requests
-                # to avoid YouTube 429 "Too Many Requests" errors
-                # Conservative delay to ensure reliability
+                # Rate limiting: wait 15 seconds between transcript requests
+                # to avoid YouTube IP blocking (they block after ~20 rapid requests)
                 if i > 0:
-                    time.sleep(3)
+                    self.logger.debug(f"Waiting 15s before next transcript request ({i+1}/{len(videos)})...")
+                    time.sleep(15)
 
-                transcript = self._get_transcript(video['video_id'], languages)
+                transcript, error = self._get_transcript(video['video_id'], languages)
 
                 if transcript:
                     video['transcript'] = transcript
                     videos_with_transcripts.append(video)
                     self.logger.debug(f"Transcript found for: {video['title']}")
                 else:
-                    self.logger.debug(f"No transcript for: {video['title']}")
+                    error_info = {
+                        'video_id': video['video_id'],
+                        'title': video['title'],
+                        'channel': video['channel_title'],
+                        'error': error or 'No transcript available'
+                    }
+                    self.transcript_errors.append(error_info)
+                    self.logger.debug(f"No transcript for: {video['title']} - {error}")
 
             except Exception as e:
+                error_info = {
+                    'video_id': video['video_id'],
+                    'title': video['title'],
+                    'channel': video['channel_title'],
+                    'error': str(e)
+                }
+                self.transcript_errors.append(error_info)
                 self.logger.warning(f"Error getting transcript for {video['video_id']}: {e}")
 
         self.logger.info(
             f"Transcripts found: {len(videos_with_transcripts)}/{len(videos)} videos"
         )
+        if self.transcript_errors:
+            self.logger.warning(f"Transcript errors: {len(self.transcript_errors)} videos failed")
 
         return videos_with_transcripts
 
@@ -269,8 +290,15 @@ class YouTubeCollector:
         self,
         video_id: str,
         languages: List[str]
-    ) -> Optional[str]:
-        """Retrieves the transcript of a video"""
+    ) -> tuple[Optional[str], Optional[str]]:
+        """
+        Retrieves the transcript of a video
+
+        Returns:
+            Tuple of (transcript_text, error_message)
+            - (text, None) if successful
+            - (None, error_message) if failed
+        """
 
         try:
             # Try to retrieve transcript in requested languages
@@ -283,13 +311,40 @@ class YouTubeCollector:
             # Concatenate text (v1.x uses .text attribute instead of dict)
             transcript_text = " ".join([entry.text for entry in transcript])
 
-            return transcript_text
+            return transcript_text, None
 
-        except (TranscriptsDisabled, NoTranscriptFound):
-            return None
+        except TranscriptsDisabled:
+            return None, "Transcripts disabled"
+        except NoTranscriptFound:
+            return None, f"No transcript in {languages}"
+        except (TooManyRequests, YouTubeRequestFailed) as e:
+            error_msg = "IP blocked by YouTube (rate limit)"
+            self.logger.warning(f"YouTube IP blocked for {video_id}: {e}")
+            return None, error_msg
         except Exception as e:
+            error_type = type(e).__name__
             self.logger.debug(f"Unexpected error getting transcript for {video_id}: {e}")
+            return None, f"{error_type}: {str(e)[:50]}"
+
+    def get_transcript_errors_summary(self) -> Optional[str]:
+        """
+        Returns a formatted summary of transcript errors for the report
+
+        Returns:
+            Markdown formatted error summary, or None if no errors
+        """
+        if not self.transcript_errors:
             return None
+
+        lines = ["## YouTube Transcript Errors\n"]
+        lines.append(f"**{len(self.transcript_errors)} video(s) without transcript:**\n")
+
+        for error in self.transcript_errors:
+            lines.append(f"- **{error['title'][:50]}...** ({error['channel']})")
+            lines.append(f"  - Video ID: `{error['video_id']}`")
+            lines.append(f"  - Error: {error['error']}")
+
+        return "\n".join(lines)
 
     def get_video_full_text(self, video_data: Dict[str, Any]) -> str:
         """

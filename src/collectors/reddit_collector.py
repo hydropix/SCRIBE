@@ -227,8 +227,9 @@ class RedditCollector:
         comments_data = []
 
         try:
-            # Retrieve top comments
-            post.comment_sort = 'top'
+            # Note: We don't set comment_sort here because comments may already
+            # be loaded (PRAW lazy-loads them on first access). The default sort
+            # ("confidence") is acceptable for our use case.
             post.comments.replace_more(limit=0)  # Avoid "load more comments"
 
             for comment in post.comments[:limit]:

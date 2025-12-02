@@ -14,6 +14,9 @@ reddit:
     - singularity
     - AGI
     - StableDiffusion
+    - comfyui
+    - DefendingAIArt
+    - QwenImageGen
     - AIethics
     - Futurology
     - DarkFuturology
@@ -45,21 +48,23 @@ reddit:
   comments_limit: 5
 
 youtube:
+  enabled: false  # Set to true to enable YouTube collection
+
   # Search by keywords
   keywords:
-    - "AI research"
-    - "LLM"
-    - "Anthropic"
-    - "Claude Code"
+  #  - "AI research"
+  #  - "LLM"
+  #  - "Anthropic"
+  #  - "Claude Code"
 
   # Specific channels to monitor (Channel IDs or usernames)
   channels:
-    - "@YannicKilcher"
-    - "@aiexplained-official"
-    - "@matthew_berman"
-    - "@aiDotEngineer"
-    - "@MarinaWyssAI"
-    - "@LudovicSalenne"
+  #  - "@YannicKilcher"
+  #  - "@aiexplained-official"
+  #  - "@matthew_berman"
+  #  - "@aiDotEngineer"
+  #  - "@MarinaWyssAI"
+  #  - "@LudovicSalenne"
 
   # Number of videos per search/channel
   videos_limit: 1
@@ -74,7 +79,10 @@ youtube:
 
 # === ANALYSE ===
 analysis:
-  relevance_threshold: 7
+  # Minimum relevance score (0-100 scale) to consider content
+  relevance_threshold: 60
+  # Maximum number of items to publish (top scored items)
+  max_items: 12
   # Similarity thresholds for deduplication
   simhash_threshold: 0.85    # For near-identical content (locality-sensitive hashing)
   tfidf_threshold: 0.67      # For semantic similarity (TF-IDF cosine, recommended: 0.67)

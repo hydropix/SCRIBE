@@ -88,7 +88,10 @@ class SCRIBE:
 
         # Initialize collectors with package config
         self.reddit_collector = RedditCollector(config=pkg.settings)
-        self.youtube_collector = YouTubeCollector(config=pkg.settings)
+
+        # Only initialize YouTube collector if enabled
+        youtube_enabled = pkg.settings.get('youtube', {}).get('enabled', True)
+        self.youtube_collector = YouTubeCollector(config=pkg.settings) if youtube_enabled else None
 
         # Initialize processors with package config
         self.analyzer = ContentAnalyzer(
@@ -248,9 +251,17 @@ class SCRIBE:
             'youtube': len(youtube_videos)
         }
 
+        # Collect debug messages (e.g., YouTube transcript errors)
+        debug_messages = []
+        if self.youtube_collector:
+            transcript_errors_summary = self.youtube_collector.get_transcript_errors_summary()
+            if transcript_errors_summary:
+                debug_messages.append(transcript_errors_summary)
+
         report_result = self.report_generator.generate_report(
             unique,
-            statistics=statistics
+            statistics=statistics,
+            debug_messages=debug_messages if debug_messages else None
         )
 
         report_path = report_result['path'] if report_result else None
@@ -437,6 +448,10 @@ class SCRIBE:
 
     def _collect_youtube(self):
         """Collect YouTube videos."""
+        if self.youtube_collector is None:
+            self.logger.info("YouTube: collection disabled")
+            return []
+
         try:
             videos = self.youtube_collector.collect_videos()
 

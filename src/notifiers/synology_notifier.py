@@ -220,7 +220,7 @@ class SynologyNotifier:
         meta_parts = []
 
         score = content.get('relevance_score', 0)
-        meta_parts.append(f"Relevance: {score}/10")
+        meta_parts.append(f"Score: {score}")
 
         if metadata.get('author'):
             meta_parts.append(f"Author: {metadata['author']}")

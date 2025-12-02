@@ -290,7 +290,7 @@ class DiscordNotifier:
         # Add footer with metadata
         footer_parts = []
         score = content.get('relevance_score', 0)
-        footer_parts.append(f"Relevance: {score}/10")
+        footer_parts.append(f"Score: {score}")
 
         if metadata.get('author'):
             footer_parts.append(f"Author: {metadata['author']}")

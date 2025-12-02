@@ -88,7 +88,7 @@ class ContentAnalyzer:
 
         # Check relevance threshold
         is_relevant = (
-            relevance.get('pertinent', False) and
+            relevance.get('relevant', False) and
             relevance.get('score', 0) >= self.relevance_threshold
         )
 
@@ -96,8 +96,8 @@ class ContentAnalyzer:
             'title': title,
             'is_relevant': is_relevant,
             'relevance_score': relevance.get('score', 0),
-            'relevance_reason': relevance.get('raison', ''),
-            'category': relevance.get('categorie', 'Unknown'),
+            'relevance_reason': relevance.get('reason', ''),
+            'category': relevance.get('category', 'Unknown'),
             'insights': None,
             'metadata': metadata
         }
@@ -110,14 +110,14 @@ class ContentAnalyzer:
                 result['insights'] = insights_data.get('insights', '')
                 result['translated_title'] = insights_data.get('translated_title', title)
                 result['hook'] = insights_data.get('hook', '')
-                self.logger.info(f"✓ Relevant ({relevance['score']}/10): {title[:60]}")
+                self.logger.info(f"✓ Relevant ({relevance['score']}): {title[:60]}")
             except Exception as e:
                 self.logger.error(f"Error extracting insights: {e}")
-                result['insights'] = "Erreur lors de l'extraction des insights"
+                result['insights'] = "Error extracting insights"
                 result['translated_title'] = title
                 result['hook'] = ''
         else:
-            self.logger.debug(f"✗ Not relevant ({relevance['score']}/10): {title[:60]}")
+            self.logger.debug(f"✗ Not relevant ({relevance['score']}): {title[:60]}")
 
         return result
 
@@ -179,17 +179,32 @@ class ContentAnalyzer:
 
     def filter_relevant(self, analysis_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Filters to keep only relevant contents
+        Filters to keep only relevant contents, sorted by score and limited to max_items
 
         Args:
             analysis_results: Analysis results
 
         Returns:
-            Only relevant contents
+            Top relevant contents sorted by relevance score (descending)
         """
+        # Filter by relevance
         relevant = [r for r in analysis_results if r['is_relevant']]
 
-        self.logger.info(f"Filtered: {len(relevant)}/{len(analysis_results)} relevant contents")
+        # Sort by relevance score (descending) for best items first
+        relevant.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
+
+        # Apply max_items limit if configured
+        max_items = self.analysis_config.get('max_items')
+        if max_items and len(relevant) > max_items:
+            self.logger.info(
+                f"Limiting to top {max_items} items (from {len(relevant)} relevant)"
+            )
+            relevant = relevant[:max_items]
+
+        self.logger.info(
+            f"Filtered: {len(relevant)}/{len(analysis_results)} relevant contents "
+            f"(sorted by score, top scores: {[r.get('relevance_score', 0) for r in relevant[:5]]})"
+        )
 
         return relevant
 

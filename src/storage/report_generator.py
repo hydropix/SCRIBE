@@ -71,7 +71,8 @@ class ReportGenerator:
         self,
         relevant_contents: List[Dict[str, Any]],
         report_date: str = None,
-        statistics: Dict[str, Any] = None
+        statistics: Dict[str, Any] = None,
+        debug_messages: List[str] = None
     ) -> Dict[str, Any]:
         """
         Generates a complete monitoring report
@@ -80,6 +81,7 @@ class ReportGenerator:
             relevant_contents: List of relevant analyzed contents
             report_date: Report date (default today)
             statistics: Collection statistics (optional)
+            debug_messages: Optional list of debug/error messages to append to report
 
         Returns:
             Dictionary containing:
@@ -106,7 +108,8 @@ class ReportGenerator:
         markdown = self._build_markdown(
             report_date,
             by_category,
-            statistics
+            statistics,
+            debug_messages
         )
 
         # Save with package-specific filename
@@ -150,7 +153,8 @@ class ReportGenerator:
         self,
         report_date: str,
         by_category: Dict[str, List[Dict[str, Any]]],
-        statistics: Dict[str, Any] = None
+        statistics: Dict[str, Any] = None,
+        debug_messages: List[str] = None
     ) -> str:
         """Builds the Markdown content of the report"""
 
@@ -178,6 +182,17 @@ class ReportGenerator:
                 lines.extend(self._format_content_item(content, i))
 
             lines.extend(["", "---", ""])
+
+        # Debug messages section (if any)
+        if debug_messages:
+            lines.extend([
+                "",
+                "## ⚠️ Debug Information",
+                "",
+            ])
+            for msg in debug_messages:
+                lines.append(msg)
+                lines.append("")
 
         # Footer
         lines.extend([
