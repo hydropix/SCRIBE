@@ -139,8 +139,8 @@ def test_configuration_files():
                     print(f"        - Reddit subreddits: {len(subreddits)}")
 
                 if "youtube" in settings:
-                    keywords = settings["youtube"].get("keywords", [])
-                    channels = settings["youtube"].get("channels", [])
+                    keywords = settings["youtube"].get("keywords") or []
+                    channels = settings["youtube"].get("channels") or []
                     print(f"        - YouTube keywords: {len(keywords)}")
                     print(f"        - YouTube channels: {len(channels)}")
 
@@ -532,35 +532,170 @@ def test_directory_structure():
     return all_ok
 
 
-def test_python_dependencies():
-    """Test that required Python packages are installed."""
+def test_python_dependencies(auto_install: bool = True):
+    """Test that required Python packages are installed and optionally install missing ones."""
     print_header("PYTHON DEPENDENCIES")
 
+    # Core dependencies (module_name, package_name, required)
     dependencies = [
-        ("dotenv", "python-dotenv"),
-        ("yaml", "PyYAML"),
-        ("praw", "praw"),
-        ("googleapiclient", "google-api-python-client"),
-        ("youtube_transcript_api", "youtube-transcript-api"),
-        ("ollama", "ollama"),
-        ("requests", "requests"),
-        ("schedule", "schedule"),
-        ("aiosqlite", "aiosqlite"),
-        ("dateutil", "python-dateutil"),
-        ("pytz", "pytz"),
+        ("dotenv", "python-dotenv", True),
+        ("yaml", "PyYAML", True),
+        ("praw", "praw", True),
+        ("googleapiclient", "google-api-python-client", True),
+        ("youtube_transcript_api", "youtube-transcript-api", True),
+        ("ollama", "ollama", True),
+        ("requests", "requests", True),
+        ("aiosqlite", "aiosqlite", True),
+        ("dateutil", "python-dateutil", True),
+        ("pytz", "pytz", True),
+        ("sklearn", "scikit-learn", True),
+        # NLI pre-filter dependencies (optional but recommended)
+        ("transformers", "transformers", False),
+        ("torch", "torch", False),
     ]
 
     all_installed = True
+    missing_packages = []
 
-    for module_name, package_name in dependencies:
+    for entry in dependencies:
+        module_name, package_name, required = entry
         try:
             __import__(module_name)
             print_result(package_name, True, "Installed")
         except ImportError:
-            print_result(package_name, False, f"Not installed (pip install {package_name})")
-            all_installed = False
+            if required:
+                print_result(package_name, False, f"MISSING (required)")
+                all_installed = False
+            else:
+                print_result(package_name, False, f"MISSING (optional - for NLI pre-filter)")
+            missing_packages.append((package_name, required))
+
+    # Auto-install missing packages
+    if missing_packages and auto_install:
+        print("\n" + "-" * 40)
+        required_missing = [p for p, r in missing_packages if r]
+        optional_missing = [p for p, r in missing_packages if not r]
+
+        if required_missing:
+            print(f"\nInstalling {len(required_missing)} required package(s)...")
+            for package in required_missing:
+                success = install_package(package)
+                if success:
+                    print_result(f"  Install {package}", True, "Installed successfully")
+                else:
+                    print_result(f"  Install {package}", False, "Installation failed")
+                    all_installed = False
+
+        if optional_missing:
+            print(f"\nInstalling {len(optional_missing)} optional package(s) for NLI pre-filter...")
+            print("  (This may take a few minutes for torch...)")
+            for package in optional_missing:
+                success = install_package(package)
+                if success:
+                    print_result(f"  Install {package}", True, "Installed successfully")
+                else:
+                    print_result(f"  Install {package}", False, "Installation failed (NLI pre-filter will be disabled)")
 
     return all_installed
+
+
+def install_package(package_name: str) -> bool:
+    """Install a Python package using pip."""
+    import subprocess
+
+    try:
+        print(f"    Running: pip install {package_name}...")
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", package_name],
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 min timeout for large packages like torch
+        )
+        return result.returncode == 0
+    except subprocess.TimeoutExpired:
+        print(f"    Timeout installing {package_name}")
+        return False
+    except Exception as e:
+        print(f"    Error installing {package_name}: {e}")
+        return False
+
+
+def test_nli_prefilter():
+    """Test NLI pre-filter configuration and model loading."""
+    print_header("NLI PRE-FILTER")
+
+    # Check if NLI is enabled in any package
+    packages_dir = Path("packages")
+    nli_enabled = False
+    nli_config = {}
+
+    if packages_dir.exists():
+        for package_dir in packages_dir.iterdir():
+            if package_dir.is_dir():
+                settings_path = package_dir / "settings.yaml"
+                if settings_path.exists():
+                    with open(settings_path, 'r', encoding='utf-8') as f:
+                        settings = yaml.safe_load(f)
+
+                    if settings.get('nli_prefilter', {}).get('enabled', False):
+                        nli_enabled = True
+                        nli_config = settings['nli_prefilter']
+                        print(f"NLI pre-filter enabled in package: {package_dir.name}")
+                        break
+
+    if not nli_enabled:
+        print_result("NLI pre-filter", True, "Disabled in all packages (skipping test)")
+        return True
+
+    # Check dependencies
+    try:
+        import transformers
+        print_result("transformers library", True, f"Version: {transformers.__version__}")
+    except ImportError:
+        print_result("transformers library", False, "Not installed - run: pip install transformers")
+        return False
+
+    try:
+        import torch
+        print_result("torch library", True, f"Version: {torch.__version__}")
+        if torch.cuda.is_available():
+            print(f"    CUDA available: {torch.cuda.get_device_name(0)}")
+        else:
+            print("    CUDA: Not available (using CPU)")
+    except ImportError:
+        print_result("torch library", False, "Not installed - run: pip install torch")
+        return False
+
+    # Test model loading
+    model_name = nli_config.get('model', 'facebook/bart-large-mnli')
+    print(f"\nTesting model: {model_name}")
+    print("  (First run will download the model ~1.6GB...)")
+
+    try:
+        from transformers import pipeline
+
+        classifier = pipeline(
+            "zero-shot-classification",
+            model=model_name,
+            device=-1  # CPU
+        )
+
+        # Quick test
+        test_text = "OpenAI released GPT-5 with major improvements"
+        labels = ["relevant AI news", "off-topic content"]
+
+        result = classifier(test_text, labels)
+        top_label = result['labels'][0]
+        top_score = result['scores'][0]
+
+        print_result("Model loading", True, f"Model loaded successfully")
+        print_result("Classification test", True, f"'{test_text[:30]}...' → {top_label} ({top_score:.2f})")
+
+        return True
+
+    except Exception as e:
+        print_result("NLI model test", False, f"Error: {str(e)[:100]}")
+        return False
 
 
 def main():
@@ -572,10 +707,11 @@ def main():
     results = {}
 
     # Run all tests
-    results["dependencies"] = test_python_dependencies()
+    results["dependencies"] = test_python_dependencies(auto_install=True)
     results["directories"] = test_directory_structure()
     results["config_files"] = test_configuration_files()
     results["env_vars"] = test_environment_variables()
+    results["nli_prefilter"] = test_nli_prefilter()
     results["ollama"] = test_ollama_connection()
     results["reddit"] = test_reddit_api()
     results["youtube"] = test_youtube_api()

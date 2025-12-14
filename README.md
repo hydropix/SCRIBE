@@ -160,7 +160,7 @@ python main.py --package ai_trends --mode once
 |------|-------------|
 | `setup.bat` | First-time setup: venv, dependencies, .env, and tests |
 | `run_ai_trends.bat` | Run the AI Trends package |
-| `test_config.bat` | Run configuration tests only |
+| `test_connections.bat` | Run API connection tests (Reddit, YouTube, Ollama, Discord) |
 
 ---
 

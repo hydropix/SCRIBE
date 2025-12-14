@@ -34,11 +34,19 @@ if errorlevel 1 (
 echo [+] Virtual environment activated.
 echo.
 
-REM Check if dependencies are installed
+REM Check if all required dependencies are installed
 echo Checking dependencies...
-pip show python-dotenv >nul 2>&1
-if errorlevel 1 (
-    echo [!] Installing required dependencies...
+set "MISSING_DEPS=0"
+
+REM Check core dependencies
+pip show python-dotenv >nul 2>&1 || set "MISSING_DEPS=1"
+pip show praw >nul 2>&1 || set "MISSING_DEPS=1"
+pip show scikit-learn >nul 2>&1 || set "MISSING_DEPS=1"
+pip show google-api-python-client >nul 2>&1 || set "MISSING_DEPS=1"
+pip show ollama >nul 2>&1 || set "MISSING_DEPS=1"
+
+if "%MISSING_DEPS%"=="1" (
+    echo [!] Missing dependencies detected. Installing...
     pip install -r requirements.txt
     if errorlevel 1 (
         echo [-] Error installing dependencies
@@ -47,17 +55,8 @@ if errorlevel 1 (
     echo [+] Dependencies installed.
     echo.
 ) else (
-    pip show praw >nul 2>&1
-    if errorlevel 1 (
-        echo [!] Installing missing dependencies...
-        pip install -r requirements.txt
-        if errorlevel 1 (
-            echo [-] Error installing dependencies
-            goto :end
-        )
-        echo [+] Dependencies installed.
-        echo.
-    )
+    echo [+] All dependencies are installed.
+    echo.
 )
 
 REM Run the test script

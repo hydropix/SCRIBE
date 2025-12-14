@@ -77,6 +77,20 @@ youtube:
     - fr
     - en
 
+# === NLI PRE-FILTER ===
+# Fast pre-filtering using lightweight NLI model (zero-shot classification)
+# Reduces LLM calls by filtering obvious non-relevant content first
+nli_prefilter:
+  enabled: true
+  model: "facebook/bart-large-mnli"  # Lightweight, fast model
+  threshold: 0.45  # Confidence threshold (0.0-1.0). Lower = keep more, higher = stricter
+  max_text_length: 512  # Characters to analyze (title + beginning of content)
+  device: "cpu"  # "cpu", "cuda", or "mps" (Apple Silicon)
+  # Custom relevance labels (first label = "relevant", second = "not relevant")
+  relevance_labels:
+    - "relevant technology, AI, or machine learning news"
+    - "off-topic, personal, or irrelevant content"
+
 # === ANALYSE ===
 analysis:
   # Minimum relevance score (0-100 scale) to consider content

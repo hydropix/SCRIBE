@@ -26,6 +26,10 @@ pytz==2023.3
 # Fast similarity detection
 scikit-learn==1.3.2
 
+# NLI pre-filter (zero-shot classification)
+transformers>=4.35.0
+torch>=2.0.0
+
 # Testing (optional)
 pytest==7.4.3
 pytest-asyncio==0.21.1

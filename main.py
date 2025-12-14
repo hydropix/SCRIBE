@@ -26,6 +26,7 @@ from src.collectors.reddit_collector import RedditCollector
 from src.collectors.youtube_collector import YouTubeCollector
 from src.processors.content_analyzer import ContentAnalyzer
 from src.processors.deduplicator import ContentDeduplicator
+from src.processors.nli_prefilter import NLIPrefilter
 from src.storage.cache_manager import CacheManager
 from src.storage.report_generator import ReportGenerator
 from src.notifiers.discord_notifier import DiscordNotifier
@@ -173,6 +174,17 @@ class SCRIBE:
             simhash_threshold=pkg.settings.get('analysis', {}).get('simhash_threshold', 0.85)
         )
 
+        # Initialize NLI pre-filter (fast filtering before LLM)
+        nli_config = pkg.settings.get('nli_prefilter', {})
+        self.nli_prefilter = NLIPrefilter(
+            model_name=nli_config.get('model', 'facebook/bart-large-mnli'),
+            relevance_labels=nli_config.get('relevance_labels'),
+            threshold=nli_config.get('threshold', 0.5),
+            enabled=nli_config.get('enabled', False),
+            max_text_length=nli_config.get('max_text_length', 512),
+            device=nli_config.get('device', 'cpu')
+        )
+
         # Initialize storage with package-specific paths
         self.cache = CacheManager(
             db_path=str(pkg.cache_path),
@@ -275,6 +287,30 @@ class SCRIBE:
         if not unprocessed:
             self.logger.info("All contents already processed. Exiting.")
             return
+
+        # 2.5 NLI Pre-filtering (fast filter before LLM)
+        nli_config = self.config.get('nli_prefilter', {})
+        nli_filtered_out = []
+
+        if nli_config.get('enabled', False):
+            self.logger.info("\nSTEP 2.5: NLI pre-filtering (fast relevance check)...")
+
+            unprocessed, nli_filtered_out = self.nli_prefilter.filter_batch(
+                unprocessed,
+                content_key='text',
+                title_key='title'
+            )
+
+            if nli_filtered_out:
+                nli_stats = self.nli_prefilter.get_statistics(nli_filtered_out)
+                self.logger.info(
+                    f"NLI filtered out {nli_stats['filtered_count']} items "
+                    f"(avg score: {nli_stats['avg_score']:.2f})"
+                )
+
+            if not unprocessed:
+                self.logger.info("All contents filtered by NLI pre-filter. No LLM analysis needed.")
+                return
 
         # 3. LLM analysis
         self.logger.info("\nSTEP 3: Analyzing contents with LLM...")
@@ -593,7 +629,9 @@ class SCRIBE:
         self.logger.info("=" * 60)
         self.logger.info(f"Package: {pkg_name}")
         self.logger.info(f"Collected: {total_collected} items")
-        self.logger.info(f"Analyzed: {len(analyzed)} items")
+        if nli_filtered_out:
+            self.logger.info(f"NLI filtered: {len(nli_filtered_out)} items (skipped LLM)")
+        self.logger.info(f"Analyzed (LLM): {len(analyzed)} items")
         self.logger.info(f"Relevant: {len(relevant)} items ({len(relevant)/len(analyzed)*100:.1f}%)")
         self.logger.info(f"Unique: {len(unique)} items")
         self.logger.info(f"Report: {report_path if report_path else 'Not generated'}")
