@@ -7,9 +7,13 @@ Multi-package intelligence gathering system.
 
 import argparse
 import logging
+import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
+
+import requests
 
 from src.package_manager import PackageManager, PackageConfig
 from src.utils import (
@@ -27,6 +31,70 @@ from src.storage.report_generator import ReportGenerator
 from src.notifiers.discord_notifier import DiscordNotifier
 from src.notifiers.synology_notifier import SynologyNotifier
 from src.notifiers.fallback_manager import FallbackManager
+
+
+def ensure_ollama_running(host: str = "http://localhost:11434", timeout: int = 30) -> bool:
+    """
+    Check if Ollama is running and start it if not.
+
+    Args:
+        host: Ollama API host URL
+        timeout: Maximum time to wait for Ollama to start (seconds)
+
+    Returns:
+        True if Ollama is running, False if it couldn't be started
+    """
+    logger = logging.getLogger(__name__)
+
+    # Check if Ollama is already running
+    try:
+        response = requests.get(f"{host}/api/tags", timeout=5)
+        if response.status_code == 200:
+            logger.info("Ollama is already running")
+            return True
+    except requests.exceptions.RequestException:
+        pass
+
+    # Ollama not running, try to start it
+    logger.info("Ollama is not running. Attempting to start...")
+
+    try:
+        # Start Ollama in background (Windows-compatible)
+        if sys.platform == "win32":
+            subprocess.Popen(
+                ["ollama", "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+        else:
+            subprocess.Popen(
+                ["ollama", "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True
+            )
+    except FileNotFoundError:
+        logger.error("Ollama executable not found. Please install Ollama first.")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to start Ollama: {e}")
+        return False
+
+    # Wait for Ollama to be ready
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            response = requests.get(f"{host}/api/tags", timeout=2)
+            if response.status_code == 200:
+                logger.info(f"Ollama started successfully (took {time.time() - start_time:.1f}s)")
+                return True
+        except requests.exceptions.RequestException:
+            pass
+        time.sleep(1)
+
+    logger.error(f"Ollama failed to start within {timeout} seconds")
+    return False
 
 
 class SCRIBE:
@@ -149,6 +217,12 @@ class SCRIBE:
         self.logger.info("\n" + "=" * 60)
         self.logger.info(f"Starting intelligence cycle at {datetime.now()}")
         self.logger.info("=" * 60 + "\n")
+
+        # Ensure Ollama is running before starting the cycle
+        ollama_host = self.package_config.get_ollama_config().get('host', 'http://localhost:11434')
+        if not ensure_ollama_running(host=ollama_host):
+            self.logger.error("Cannot proceed without Ollama. Exiting.")
+            return
 
         # 0. Cache cleanup (remove entries older than retention period)
         self.logger.info("STEP 0: Cleaning up old cache entries...")
@@ -375,47 +449,143 @@ class SCRIBE:
 
         # 8. Discord summary notification (if enabled, separate webhook)
         summary_config = discord_config.get('summary', {})
+        summary_text = None  # Initialize for potential reuse by Synology
+        discord_summary_success = False
+
         if summary_config.get('enabled', False) and report_result:
             self.logger.info("\nSTEP 8: Generating and sending Discord summary...")
+
+            # Get retry configuration from fallback settings
+            fallback_config = self.config.get('fallback', {})
+            max_retries = fallback_config.get('max_retries', 3)
+            retry_delay = fallback_config.get('retry_delay', 5.0)
+
             try:
                 # Generate summary using Ollama (will be split if > 2000 chars)
+                self.logger.info("Generating daily summary with Ollama...")
                 summary_text = self.analyzer.ollama.generate_daily_summary(
                     relevant_contents=unique
                 )
 
-                # Send to summary webhook (auto-splits if needed)
-                self.discord_notifier.send_summary(
-                    summary_text=summary_text,
-                    mention_role=summary_config.get('mention_role', '')
-                )
+                if not summary_text or len(summary_text.strip()) == 0:
+                    self.logger.error("Discord summary generation failed: empty summary returned from Ollama")
+                else:
+                    self.logger.info(f"Summary generated successfully: {len(summary_text)} characters")
 
-                self.logger.info(f"Summary generated: {len(summary_text)} characters")
+                    # Send to summary webhook with retry mechanism
+                    mention_role = summary_config.get('mention_role', '')
+
+                    for attempt in range(1, max_retries + 1):
+                        self.logger.info(f"Discord summary send attempt {attempt}/{max_retries}...")
+
+                        try:
+                            discord_summary_success = self.discord_notifier.send_summary(
+                                summary_text=summary_text,
+                                mention_role=mention_role
+                            )
+
+                            if discord_summary_success:
+                                self.logger.info(f"✓ Discord summary sent successfully on attempt {attempt}")
+                                break
+                            else:
+                                self.logger.warning(f"Discord summary send_summary() returned False on attempt {attempt}/{max_retries}")
+
+                                if attempt < max_retries:
+                                    delay = retry_delay * (2 ** (attempt - 1))  # Exponential backoff
+                                    self.logger.info(f"Retrying in {delay:.1f} seconds...")
+                                    time.sleep(delay)
+
+                        except Exception as send_error:
+                            self.logger.error(f"Discord summary send raised exception on attempt {attempt}/{max_retries}: {send_error}")
+
+                            if attempt < max_retries:
+                                delay = retry_delay * (2 ** (attempt - 1))
+                                self.logger.info(f"Retrying in {delay:.1f} seconds...")
+                                time.sleep(delay)
+
+                    if not discord_summary_success:
+                        self.logger.error(f"✗ Discord summary notification FAILED after {max_retries} attempts")
+                        self.logger.error(f"  - Webhook env: {summary_config.get('webhook_env', 'NOT_SET')}")
+                        self.logger.error(f"  - Summary length: {len(summary_text)} chars")
+                        self.logger.error(f"  - Check Discord webhook URL and network connectivity")
 
             except Exception as e:
-                self.logger.error(f"Discord summary notification failed (non-blocking): {e}")
+                self.logger.error(f"Discord summary notification failed with exception: {e}")
+                self.logger.error(f"  - Exception type: {type(e).__name__}")
+                import traceback
+                self.logger.error(f"  - Traceback: {traceback.format_exc()}")
 
         # 8b. Synology Chat summary notification (if enabled, separate webhook)
         synology_summary_config = synology_config.get('summary', {})
+        synology_summary_success = False
+
         if synology_summary_config.get('enabled', False) and report_result:
             self.logger.info("\nSTEP 8b: Sending Synology Chat summary...")
+
+            # Get retry configuration from fallback settings
+            fallback_config = self.config.get('fallback', {})
+            max_retries = fallback_config.get('max_retries', 3)
+            retry_delay = fallback_config.get('retry_delay', 5.0)
+
             try:
-                # Generate summary if not already generated
-                if not summary_config.get('enabled', False):
+                # Generate summary if not already generated (by Discord step)
+                if summary_text is None:
+                    self.logger.info("Generating daily summary with Ollama (not generated by Discord step)...")
                     summary_text = self.analyzer.ollama.generate_daily_summary(
                         relevant_contents=unique
                     )
-                # Reuse the summary generated for Discord
 
-                # Send to Synology summary webhook (auto-splits if needed)
-                self.synology_notifier.send_summary(
-                    summary_text=summary_text,
-                    mention=synology_summary_config.get('mention', '')
-                )
+                    if not summary_text or len(summary_text.strip()) == 0:
+                        self.logger.error("Synology summary generation failed: empty summary returned from Ollama")
+                        summary_text = None
+                    else:
+                        self.logger.info(f"Summary generated successfully: {len(summary_text)} characters")
+                else:
+                    self.logger.info(f"Reusing summary from Discord step: {len(summary_text)} characters")
 
-                self.logger.info(f"Synology summary sent: {len(summary_text)} characters")
+                if summary_text:
+                    # Send to Synology summary webhook with retry mechanism
+                    mention = synology_summary_config.get('mention', '')
+
+                    for attempt in range(1, max_retries + 1):
+                        self.logger.info(f"Synology summary send attempt {attempt}/{max_retries}...")
+
+                        try:
+                            synology_summary_success = self.synology_notifier.send_summary(
+                                summary_text=summary_text,
+                                mention=mention
+                            )
+
+                            if synology_summary_success:
+                                self.logger.info(f"✓ Synology summary sent successfully on attempt {attempt}")
+                                break
+                            else:
+                                self.logger.warning(f"Synology summary send_summary() returned False on attempt {attempt}/{max_retries}")
+
+                                if attempt < max_retries:
+                                    delay = retry_delay * (2 ** (attempt - 1))  # Exponential backoff
+                                    self.logger.info(f"Retrying in {delay:.1f} seconds...")
+                                    time.sleep(delay)
+
+                        except Exception as send_error:
+                            self.logger.error(f"Synology summary send raised exception on attempt {attempt}/{max_retries}: {send_error}")
+
+                            if attempt < max_retries:
+                                delay = retry_delay * (2 ** (attempt - 1))
+                                self.logger.info(f"Retrying in {delay:.1f} seconds...")
+                                time.sleep(delay)
+
+                    if not synology_summary_success:
+                        self.logger.error(f"✗ Synology summary notification FAILED after {max_retries} attempts")
+                        self.logger.error(f"  - Webhook env: {synology_summary_config.get('webhook_env', 'NOT_SET')}")
+                        self.logger.error(f"  - Summary length: {len(summary_text)} chars")
+                        self.logger.error(f"  - Check Synology webhook URL and network connectivity")
 
             except Exception as e:
-                self.logger.error(f"Synology Chat summary notification failed (non-blocking): {e}")
+                self.logger.error(f"Synology Chat summary notification failed with exception: {e}")
+                self.logger.error(f"  - Exception type: {type(e).__name__}")
+                import traceback
+                self.logger.error(f"  - Traceback: {traceback.format_exc()}")
 
         # 9. Final summary
         self.logger.info("\n" + "=" * 60)
@@ -427,6 +597,15 @@ class SCRIBE:
         self.logger.info(f"Relevant: {len(relevant)} items ({len(relevant)/len(analyzed)*100:.1f}%)")
         self.logger.info(f"Unique: {len(unique)} items")
         self.logger.info(f"Report: {report_path if report_path else 'Not generated'}")
+
+        # Summary notification status
+        if summary_config.get('enabled', False):
+            status = "✓ SUCCESS" if discord_summary_success else "✗ FAILED"
+            self.logger.info(f"Discord Summary: {status}")
+        if synology_summary_config.get('enabled', False):
+            status = "✓ SUCCESS" if synology_summary_success else "✗ FAILED"
+            self.logger.info(f"Synology Summary: {status}")
+
         self.logger.info("=" * 60 + "\n")
 
     def _collect_reddit(self):
