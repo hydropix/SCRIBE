@@ -8,27 +8,28 @@ package:
 # === SOURCES ===
 reddit:
   subreddits:
+    - accelerate
+    - AGI
+    - AI_Agents
+    - AIethics
     - artificial
     - ArtificialInteligence
-    - MachineLearning
-    - singularity
-    - AGI
-    - StableDiffusion
-    - comfyui
-    - DefendingAIArt
-    - QwenImageGen
-    - AIethics
-    - Futurology
-    - DarkFuturology
-    - SillyTavernAI
+    - ChatGPT
     - ClaudeAI
     - claudexplorers
-    - LocalLLaMA
-    - AI_Agents
+    - comfyui
+    - DarkFuturology
+    - DefendingAIArt
     - Entrepreneur
-    - ChatGPT
-    - Teachers
     - ExperiencedDevs
+    - Futurology
+    - LocalLLaMA
+    - MachineLearning
+    - QwenImageGen
+    - SillyTavernAI
+    - singularity
+    - StableDiffusion
+    - Teachers
     - technology
 
   # Number of posts to fetch per subreddit
