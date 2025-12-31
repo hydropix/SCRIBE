@@ -27,5 +27,8 @@ echo.
 echo ========================================
 echo Done!
 echo ========================================
-echo.
-pause
+
+REM Auto-close after completion (no pause for scheduled tasks)
+REM To keep window open for debugging, uncomment the line below:
+REM pause
+exit /b 0
